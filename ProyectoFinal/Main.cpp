@@ -18,6 +18,12 @@
 //Load Models
 #include "SOIL2/SOIL2.h"
 
+#define SDL_MAIN_HANDLED  
+
+// Audio 
+#include <SDL.h>
+#include <SDL_mixer.h>
+
 
 // Other includes
 #include "Shader.h"
