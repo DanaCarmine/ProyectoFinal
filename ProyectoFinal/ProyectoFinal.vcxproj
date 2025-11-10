@@ -102,6 +102,10 @@
       <AdditionalLibraryDirectories>$(SolutionDir)/External Libraries/SDL2-2.28.5/lib/x86;$(SolutionDir)/External Libraries/SDL2_mixer-2.6.3/lib/x86;$(SolutionDir)/External Libraries/GLEW/lib/Release/Win32;$(SolutionDir)/External Libraries/GLFW/lib-vc2015;$(SolutionDir)/External Libraries/assimp/lib;$(SolutionDir)/External Libraries/SOIL2/lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>opengl32.lib;glew32.lib;glfw3.lib;soil2-debug.lib;assimp-vc140-mt.lib;SDL2.lib;SDL2_mixer.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy /y /d "$(SolutionDir)External Libraries\SDL2-2.28.5\lib\x86\*.dll" "$(OutDir)"
+xcopy /y /d "$(SolutionDir)External Libraries\SDL2_mixer-2.6.3\lib\x86\*.dll" "$(OutDir)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -119,6 +123,10 @@
       <AdditionalLibraryDirectories>$(SolutionDir)/External Libraries/SDL2-2.28.5/lib/x86;$(SolutionDir)/External Libraries/SDL2_mixer-2.6.3/lib/x86;$(SolutionDir)/External Libraries/GLEW/lib/Release/Win32;$(SolutionDir)/External Libraries/GLFW/lib-vc2015;$(SolutionDir)/External Libraries/assimp/lib;$(SolutionDir)/External Libraries/SOIL2/lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>opengl32.lib;glew32.lib;glfw3.lib;soil2-debug.lib;assimp-vc140-mt.lib;SDL2.lib;SDL2_mixer.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy /y /d "$(SolutionDir)External Libraries\SDL2-2.28.5\lib\x86\*.dll" "$(OutDir)"
+xcopy /y /d "$(SolutionDir)External Libraries\SDL2_mixer-2.6.3\lib\x86\*.dll" "$(OutDir)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -134,6 +142,10 @@
       <AdditionalLibraryDirectories>$(SolutionDir)/External Libraries/SDL2-2.28.5/lib/x86;$(SolutionDir)/External Libraries/SDL2_mixer-2.6.3/lib/x86;$(SolutionDir)/External Libraries/GLEW/lib/Release/Win32;$(SolutionDir)/External Libraries/GLFW/lib-vc2015;$(SolutionDir)/External Libraries/assimp/lib;$(SolutionDir)/External Libraries/SOIL2/lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>opengl32.lib;glew32.lib;glfw3.lib;soil2-debug.lib;assimp-vc140-mt.lib;SDL2.lib;SDL2_mixer.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy /y /d "$(SolutionDir)External Libraries\SDL2-2.28.5\lib\x86\*.dll" "$(OutDir)"
+xcopy /y /d "$(SolutionDir)External Libraries\SDL2_mixer-2.6.3\lib\x86\*.dll" "$(OutDir)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -151,6 +163,10 @@
       <AdditionalLibraryDirectories>$(SolutionDir)/External Libraries/SDL2-2.28.5/lib/x86;$(SolutionDir)/External Libraries/SDL2_mixer-2.6.3/lib/x86;$(SolutionDir)/External Libraries/GLEW/lib/Release/Win32;$(SolutionDir)/External Libraries/GLFW/lib-vc2015;$(SolutionDir)/External Libraries/assimp/lib;$(SolutionDir)/External Libraries/SOIL2/lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>opengl32.lib;glew32.lib;glfw3.lib;soil2-debug.lib;assimp-vc140-mt.lib;SDL2.lib;SDL2_mixer.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy /y /d "$(SolutionDir)External Libraries\SDL2-2.28.5\lib\x86\*.dll" "$(OutDir)"
+xcopy /y /d "$(SolutionDir)External Libraries\SDL2_mixer-2.6.3\lib\x86\*.dll" "$(OutDir)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

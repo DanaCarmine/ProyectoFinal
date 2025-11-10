@@ -53,10 +53,10 @@ bool active;
 
 // Positions of the point lights
 glm::vec3 pointLightPositions[] = {
-	glm::vec3(0.0f,2.0f, 0.0f),
-	glm::vec3(0.0f,0.0f, 0.0f),
-	glm::vec3(0.0f,0.0f,  0.0f),
-	glm::vec3(0.0f,0.0f, 0.0f)
+	glm::vec3(-17.645f, 5.9039f, -3.1487f),    // Luz 1
+	glm::vec3(-19.421f, 7.3384f, -34.733f),    // Luz 2
+	glm::vec3(-31.336f, 5.0656f, -47.899f),    // Luz 3
+	glm::vec3(-20.437f, 6.2256f, -61.292f)     // Luz 4
 };
 
 float vertices[] = {
@@ -117,6 +117,9 @@ float ballMaxY = 2.0f;  //Altura max (fuente de luz)
 float ballSpeed = 0.5f; //Velocidad de movimiento
 bool movingUp = true;   //Direccion del movimiento
 
+// Variables globales para control de musica
+Mix_Music* music = nullptr;
+bool musicOn = false;
 // Deltatime
 GLfloat deltaTime = 0.0f;	// Time between current frame and last frame
 GLfloat lastFrame = 0.0f;  	// Time of last frame
@@ -175,6 +178,21 @@ int main()
 	//models
 	Model Dog((char*)"Models/BackroomModel/backrooms.obj");
 	Model Piso((char*)"Models/piso.obj");
+
+	// Setup audio
+	if (SDL_Init(SDL_INIT_AUDIO) < 0) {
+		std::cout << "Error inicializando SDL: " << SDL_GetError() << std::endl;
+	}
+
+	if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
+		std::cout << "Error inicializando SDL_mixer: " << Mix_GetError() << std::endl;
+	}
+
+	// Cargar musica
+	music = Mix_LoadMUS("Audio/in the pool.mp3");
+	if (!music) {
+		std::cout << "No se pudo cargar la música: " << Mix_GetError() << std::endl;
+	}
 
 	GLfloat skyboxVertices[] = {
 		// Positions
@@ -320,32 +338,70 @@ int main()
 
 		// Directional light
 		glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.direction"), -0.2f, -1.0f, -0.3f);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.ambient"), 0.6f, 0.6f, 0.6f);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.diffuse"), 0.6f, 0.6f, 0.6f);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.specular"), 0.3f, 0.3f, 0.3f);
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.ambient"), 0.01f, 0.01f, 0.01f);
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.diffuse"), 0.03f, 0.03f, 0.03f);
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.specular"), 0.02f, 0.02f, 0.02f);
 
 
-		// Point light 1
-		glm::vec3 lightColor;
-		lightColor.x = abs(sin(glfwGetTime() * Light1.x));
-		lightColor.y = abs(sin(glfwGetTime() * Light1.y));
-		lightColor.z = sin(glfwGetTime() * Light1.z);
-
-
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[0].position"), pointLightPositions[0].x, pointLightPositions[0].y, pointLightPositions[0].z);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[0].ambient"), lightColor.x, lightColor.y, lightColor.z);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[0].diffuse"), lightColor.x, lightColor.y, lightColor.z);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[0].specular"), 1.0f, 0.2f, 0.2f);
+		// Point light 0 - Luz amarilla calida
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[0].position"),
+			pointLightPositions[0].x, pointLightPositions[0].y, pointLightPositions[0].z);
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[0].ambient"), 0.12f, 0.1f, 0.03f);
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[0].diffuse"), 0.8f, 0.7f, 0.3f);
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[0].specular"), 0.4f, 0.35f, 0.15f);
 		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[0].constant"), 1.0f);
-		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[0].linear"), 0.045f);
-		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[0].quadratic"), 0.075f);
+		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[0].linear"), 0.014f);
+		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[0].quadratic"), 0.0007f);
+
+		// Point light 1 
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[1].position"),
+			pointLightPositions[1].x, pointLightPositions[1].y, pointLightPositions[1].z);
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[1].ambient"), 0.08f, 0.08f, 0.06f);
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[1].diffuse"), 0.5f, 0.5f, 0.4f);  // Menos intensa
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[1].specular"), 0.4f, 0.4f, 0.3f);  // Sin deslumbrar
+		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[1].constant"), 1.0f);
+		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[1].linear"), 0.014f);
+		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[1].quadratic"), 0.0007f);
+
+		// Point light 2 
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[2].position"),
+			pointLightPositions[2].x, pointLightPositions[2].y, pointLightPositions[2].z);
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[2].ambient"), 0.08f, 0.12f, 0.2f);  // Más azul ambiental
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[2].diffuse"), 0.3f, 0.6f, 1.0f);  // Azul intenso
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[2].specular"), 0.4f, 0.7f, 1.0f);
+		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[2].constant"), 1.0f);
+		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[2].linear"), 0.007f);  // Menos atenuación = más alcance
+		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[2].quadratic"), 0.0002f);
+
+		// Point light 3 - Luz roja intensa para sala del fútbol (Luz 4)
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[3].position"),
+			pointLightPositions[3].x, pointLightPositions[3].y, pointLightPositions[3].z);
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[3].ambient"), 0.25f, 0.03f, 0.03f);  // Rojo ambiental fuerte
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[3].diffuse"), 1.0f, 0.08f, 0.08f);  // Rojo muy intenso
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[3].specular"), 0.8f, 0.15f, 0.15f);
+		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[3].constant"), 1.0f);
+		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[3].linear"), 0.002f);  // Mayor alcance
+		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[3].quadratic"), 0.00015f);
 
 
 		// SpotLight
 		glUniform3f(glGetUniformLocation(lightingShader.Program, "spotLight.position"), camera.GetPosition().x, camera.GetPosition().y, camera.GetPosition().z);
 		glUniform3f(glGetUniformLocation(lightingShader.Program, "spotLight.direction"), camera.GetFront().x, camera.GetFront().y, camera.GetFront().z);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "spotLight.ambient"), 0.2f, 0.2f, 0.8f);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "spotLight.diffuse"), 0.2f, 0.2f, 0.8f);
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "spotLight.ambient"), 0.0f, 0.0f, 0.0f);  // Desactivada
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "spotLight.diffuse"), 0.0f, 0.0f, 0.0f);
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "spotLight.specular"), 0.0f, 0.0f, 0.0f);
+		glUniform1f(glGetUniformLocation(lightingShader.Program, "spotLight.constant"), 1.0f);
+		glUniform1f(glGetUniformLocation(lightingShader.Program, "spotLight.linear"), 0.3f);
+		glUniform1f(glGetUniformLocation(lightingShader.Program, "spotLight.quadratic"), 0.7f);
+		glUniform1f(glGetUniformLocation(lightingShader.Program, "spotLight.cutOff"), glm::cos(glm::radians(12.0f)));
+		glUniform1f(glGetUniformLocation(lightingShader.Program, "spotLight.outerCutOff"), glm::cos(glm::radians(18.0f)));
+
+
+		// SpotLight
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "spotLight.position"), camera.GetPosition().x, camera.GetPosition().y, camera.GetPosition().z);
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "spotLight.direction"), camera.GetFront().x, camera.GetFront().y, camera.GetFront().z);
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "spotLight.ambient"), 0.0f, 0.0f, 0.0f);  // Desactivada
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "spotLight.diffuse"), 0.0f, 0.0f, 0.0f);
 		glUniform3f(glGetUniformLocation(lightingShader.Program, "spotLight.specular"), 0.0f, 0.0f, 0.0f);
 		glUniform1f(glGetUniformLocation(lightingShader.Program, "spotLight.constant"), 1.0f);
 		glUniform1f(glGetUniformLocation(lightingShader.Program, "spotLight.linear"), 0.3f);
@@ -355,7 +411,7 @@ int main()
 
 
 		// Set material properties
-		glUniform1f(glGetUniformLocation(lightingShader.Program, "material.shininess"), 5.0f);
+		glUniform1f(glGetUniformLocation(lightingShader.Program, "material.shininess"), 32.0f);
 
 		// Create camera transformations
 		glm::mat4 view;
@@ -404,12 +460,16 @@ int main()
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 		// Draw the light object (using light's vertex attributes)
 
-		model = glm::mat4(1);
-		model = glm::translate(model, pointLightPositions[0]);
-		model = glm::scale(model, glm::vec3(0.2f)); // Make it a smaller cube
-		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-		glBindVertexArray(VAO);
-		glDrawArrays(GL_TRIANGLES, 0, 36);
+		// Dibujar las 4 luces como pequeños cubos
+		for (int i = 0; i < 4; i++)
+		{
+			model = glm::mat4(1);
+			model = glm::translate(model, pointLightPositions[i]);
+			model = glm::scale(model, glm::vec3(0.2f));
+			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+			glBindVertexArray(VAO);
+			glDrawArrays(GL_TRIANGLES, 0, 36);
+		}
 
 		glBindVertexArray(0);
 
@@ -436,6 +496,13 @@ int main()
 	glDeleteBuffers(1, &EBO);
 	glDeleteVertexArrays(1, &skyboxVAO);
 	glDeleteBuffers(1, &skyboxVAO);
+
+	if (music) {
+		Mix_FreeMusic(music);
+		music = nullptr;
+	}
+	Mix_CloseAudio();
+	SDL_Quit();
 
 	// Terminate GLFW, clearing any resources allocated by GLFW.
 	glfwTerminate();
@@ -542,7 +609,21 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
 	if (keys[GLFW_KEY_N])
 	{
 		AnimBall = !AnimBall;
+	}
 
+	if (key == GLFW_KEY_M && action == GLFW_PRESS) {
+		if (!musicOn) {
+			if (music) {
+				Mix_PlayMusic(music, -1); // -1 = loop infinito
+				musicOn = true;
+				std::cout << "Musica ON\n";
+			}
+		}
+		else {
+			Mix_HaltMusic();
+			musicOn = false;
+			std::cout << "Musica OFF\n";
+		}
 	}
 }
 void Animation() {
