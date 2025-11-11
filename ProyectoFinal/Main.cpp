@@ -1,6 +1,8 @@
 // Std. Includes
 #include <string>
 #include <iostream>
+#include <vector> 
+#include <cmath>
 
 #define SDL_MAIN_HANDLED  
 
@@ -28,6 +30,8 @@
 // Other Libs
 #include "SOIL2/SOIL2.h"
 #include "stb_image.h"
+#include "Texture.h"
+using namespace std;
 
 // Properties
 const GLuint WIDTH = 800, HEIGHT = 600;
@@ -64,6 +68,51 @@ glm::vec3 pointLightPositions[] = {
     convertBlenderToOpenGL(-31.336f, 47.899f, 5.0656f),   // Point 004
     convertBlenderToOpenGL(-20.437f, 61.292f, 5.0656f)    // Rojo
 };
+
+float vertices[] = {
+     -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+        0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+        0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+        0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+       -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+       -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+
+       -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+        0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+        0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+        0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+       -0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+       -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+
+       -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+       -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+       -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+       -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+       -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+       -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+
+        0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+        0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+        0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+        0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+        0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+        0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+
+       -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+        0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+        0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+        0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+       -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+       -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+
+       -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+        0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+        0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+        0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+       -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+       -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
+};
+
 
 //Variables globales para boton de musica
 Mix_Music* music = nullptr;
@@ -119,8 +168,9 @@ int main()
     glEnable(GL_DEPTH_TEST);
 
     // Setup y compilacion de shaders
-    Shader shader("Shader/lighting.vs", "Shader/lighting.frag");
+    Shader lightingShader("Shader/lighting.vs", "Shader/lighting.frag");
     Shader skinnedShader("Shader/_skin_runtime.vs", "Shader/_tex_runtime.frag");
+    Shader skyboxShader("Shader/SkyBox.vs", "Shader/SkyBox.frag");
 
 
 
@@ -148,9 +198,115 @@ int main()
     Model animacion3((char*)"Models/jugador1.fbx");
 
 
+    GLfloat skyboxVertices[] = {
+        // Positions
+        -1.0f,  1.0f, -1.0f,
+        -1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+
+        -1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+
+        -1.0f, -1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+
+        -1.0f,  1.0f, -1.0f,
+        1.0f,  1.0f, -1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f, -1.0f,
+
+        -1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+        1.0f, -1.0f,  1.0f
+    };
+
+    GLuint indices[] =
+    {  // Note that we start from 0!
+        0,1,2,3,
+        4,5,6,7,
+        8,9,10,11,
+        12,13,14,15,
+        16,17,18,19,
+        20,21,22,23,
+        24,25,26,27,
+        28,29,30,31,
+        32,33,34,35
+    };
+
+    // First, set the container's VAO (and VBO)
+    GLuint VBO, VAO, EBO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+
+
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    // Position attribute
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)0);
+    glEnableVertexAttribArray(0);
+    // normal attribute
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    // Set texture units
+    lightingShader.Use();
+    glUniform1i(glGetUniformLocation(lightingShader.Program, "Material.difuse"), 0);
+    glUniform1i(glGetUniformLocation(lightingShader.Program, "Material.specular"), 1);
+
+    // SkyBox
+    GLuint skyboxVBO, skyboxVAO;
+    glGenVertexArrays(1, &skyboxVAO);
+    glGenBuffers(1, &skyboxVBO);
+    glBindVertexArray(skyboxVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
+
+    // Load textures
+    vector < const GLchar*> faces;
+    faces.push_back("SkyBox/left.jpg");
+    faces.push_back("SkyBox/right.jpg");
+    faces.push_back("SkyBox/top.jpg");
+    faces.push_back("SkyBox/bottom.jpg");
+    faces.push_back("SkyBox/front.jpg");
+    faces.push_back("SkyBox/back.jpg");
+
+    GLuint cubemapTexture = TextureLoading::LoadCubemap(faces);
+
+	// Projection matrix
     glm::mat4 projection = glm::perspective(camera.GetZoom(), (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT, 0.1f, 100.0f);
 
-
+   
 
     // Game loop
     while (!glfwWindowShouldClose(window))
@@ -168,19 +324,19 @@ int main()
         glClearColor(0.02f, 0.02f, 0.02f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        shader.Use();
-        glUniform1f(glGetUniformLocation(shader.Program, "material.shininess"), 16.0f);
+        lightingShader.Use();
+        glUniform1f(glGetUniformLocation(lightingShader.Program, "material.shininess"), 16.0f);
 
 
         glm::mat4 view = camera.GetViewMatrix();
-        glUniformMatrix4fv(glGetUniformLocation(shader.Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-        glUniformMatrix4fv(glGetUniformLocation(shader.Program, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(glGetUniformLocation(lightingShader.Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+        glUniformMatrix4fv(glGetUniformLocation(lightingShader.Program, "view"), 1, GL_FALSE, glm::value_ptr(view));
 
         // Luz direccional 
-        glUniform3f(glGetUniformLocation(shader.Program, "dirLight.direction"), -0.2f, -1.0f, -0.3f);
-        glUniform3f(glGetUniformLocation(shader.Program, "dirLight.ambient"), 0.01f, 0.01f, 0.01f);
-        glUniform3f(glGetUniformLocation(shader.Program, "dirLight.diffuse"), 0.03f, 0.03f, 0.03f);
-        glUniform3f(glGetUniformLocation(shader.Program, "dirLight.specular"), 0.02f, 0.02f, 0.02f);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.direction"), -0.2f, -1.0f, -0.3f);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.ambient"), 0.01f, 0.01f, 0.01f);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.diffuse"), 0.03f, 0.03f, 0.03f);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.specular"), 0.02f, 0.02f, 0.02f);
 
         glm::vec3 white = glm::vec3(1.0f);
         glm::vec3 red = glm::vec3(1.0f, 0.0f, 0.0f); //  rojo 
@@ -191,11 +347,11 @@ int main()
             glm::vec3 color = white;
             if (i == 7) color = red;
 
-            glUniform3fv(glGetUniformLocation(shader.Program, ("pointLights[" + num + "].position").c_str()),
+            glUniform3fv(glGetUniformLocation(lightingShader.Program, ("pointLights[" + num + "].position").c_str()),
                 1, glm::value_ptr(pointLightPositions[i]));
 
             // Luz ambiental tenue
-            glUniform3fv(glGetUniformLocation(shader.Program, ("pointLights[" + num + "].ambient").c_str()),
+            glUniform3fv(glGetUniformLocation(lightingShader.Program, ("pointLights[" + num + "].ambient").c_str()),
                 1, glm::value_ptr(color * 0.1f));
 
             // Ajuste de intensidad para luces 003, 004 y 005 (indices 0, 1, 6)
@@ -204,36 +360,36 @@ int main()
                 diffuseIntensity = 0.6f; // mas suaves
 
             // Luz difusa
-            glUniform3fv(glGetUniformLocation(shader.Program, ("pointLights[" + num + "].diffuse").c_str()),
+            glUniform3fv(glGetUniformLocation(lightingShader.Program, ("pointLights[" + num + "].diffuse").c_str()),
                 1, glm::value_ptr(color * diffuseIntensity));
 
             // Reflejo especular tambien reducido en esas luces
             float specularIntensity = (i == 0 || i == 1 || i == 6) ? 0.5f : 1.0f;
-            glUniform3fv(glGetUniformLocation(shader.Program, ("pointLights[" + num + "].specular").c_str()),
+            glUniform3fv(glGetUniformLocation(lightingShader.Program, ("pointLights[" + num + "].specular").c_str()),
                 1, glm::value_ptr(color * specularIntensity));
 
             // Atenuacion (alcance de luz)
-            glUniform1f(glGetUniformLocation(shader.Program, ("pointLights[" + num + "].constant").c_str()), 1.0f);
-            glUniform1f(glGetUniformLocation(shader.Program, ("pointLights[" + num + "].linear").c_str()), 0.07f);
-            glUniform1f(glGetUniformLocation(shader.Program, ("pointLights[" + num + "].quadratic").c_str()), 0.017f);
+            glUniform1f(glGetUniformLocation(lightingShader.Program, ("pointLights[" + num + "].constant").c_str()), 1.0f);
+            glUniform1f(glGetUniformLocation(lightingShader.Program, ("pointLights[" + num + "].linear").c_str()), 0.07f);
+            glUniform1f(glGetUniformLocation(lightingShader.Program, ("pointLights[" + num + "].quadratic").c_str()), 0.017f);
         }
 
 
 
         // Posicion de la camara
-        glUniform3f(glGetUniformLocation(shader.Program, "viewPos"), camera.GetPosition().x, camera.GetPosition().y, camera.GetPosition().z);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "viewPos"), camera.GetPosition().x, camera.GetPosition().y, camera.GetPosition().z);
 
 
         // Draw the loaded model
         glm::mat4 model(1);
-        glUniformMatrix4fv(glGetUniformLocation(shader.Program, "model"), 1, GL_FALSE, glm::value_ptr(model));
-        backroom.Draw(shader);
+        glUniformMatrix4fv(glGetUniformLocation(lightingShader.Program, "model"), 1, GL_FALSE, glm::value_ptr(model));
+        backroom.Draw(lightingShader);
 
         glm::mat4 model2(1);
         model2 = glm::translate(model2, glm::vec3(-20.0f, -2.0f, -30.0f)); // mismo Z que el otro
         model2 = glm::scale(model2, glm::vec3(1.0f));
-        glUniformMatrix4fv(glGetUniformLocation(shader.Program, "model"), 1, GL_FALSE, glm::value_ptr(model2));
-        balon.Draw(shader);
+        glUniformMatrix4fv(glGetUniformLocation(lightingShader.Program, "model"), 1, GL_FALSE, glm::value_ptr(model2));
+        balon.Draw(lightingShader);
 
 
         double t = glfwGetTime();
@@ -293,9 +449,31 @@ int main()
 
         animacion3.Draw(skinnedShader);
 
+        // Draw SkyBox
+        glDepthFunc(GL_LEQUAL);
+        skyboxShader.Use();
+        view = glm::mat4(glm::mat3(camera.GetViewMatrix()));
+        glUniformMatrix4fv(glGetUniformLocation(skyboxShader.Program, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(glGetUniformLocation(skyboxShader.Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+
+        glBindVertexArray(skyboxVAO);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        glBindVertexArray(0);
+        glDepthFunc(GL_LESS);
+
         // Swap the buffers
         glfwSwapBuffers(window);
+
     }
+
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
+    glDeleteBuffers(1, &EBO);
+    glDeleteVertexArrays(1, &skyboxVAO);
+    glDeleteBuffers(1, &skyboxVAO);
+
     if (music) {
         Mix_FreeMusic(music);
         music = nullptr;
