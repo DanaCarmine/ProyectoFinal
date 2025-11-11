@@ -142,6 +142,7 @@ int main()
     // Load models
     stbi_set_flip_vertically_on_load(false);
     Model backroom((char*)"Models/BackroomModel/backrooms.obj");
+    Model balon((char*)"Models/balon_futbol.obj");
     Model animacion((char*)"Models/Baile2.fbx");
     Model animacion2((char*)"Models/baile1.fbx");
     Model animacion3((char*)"Models/jugador1.fbx");
@@ -227,6 +228,13 @@ int main()
         glm::mat4 model(1);
         glUniformMatrix4fv(glGetUniformLocation(shader.Program, "model"), 1, GL_FALSE, glm::value_ptr(model));
         backroom.Draw(shader);
+
+        glm::mat4 model2(1);
+        model2 = glm::translate(model2, glm::vec3(-20.0f, -2.0f, -30.0f)); // mismo Z que el otro
+        model2 = glm::scale(model2, glm::vec3(1.0f));
+        glUniformMatrix4fv(glGetUniformLocation(shader.Program, "model"), 1, GL_FALSE, glm::value_ptr(model2));
+        balon.Draw(shader);
+
 
         double t = glfwGetTime();
 
