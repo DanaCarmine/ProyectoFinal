@@ -559,7 +559,7 @@ int main()
         
 
         // Dibujar balón (
-        shader.Use();
+        lightingShader.Use();
         glm::mat4 model2(1);
 
         if (playingKeyframes) {
