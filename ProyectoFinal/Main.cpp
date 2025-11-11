@@ -1,4 +1,4 @@
-// Std. Includes
+﻿// Std. Includes
 #include <string>
 #include <iostream>
 #include <vector> 
@@ -32,6 +32,17 @@
 #include "stb_image.h"
 #include "Texture.h"
 using namespace std;
+
+#include <vector>
+
+// Estructura para keyframes
+struct Keyframe {
+    float time;
+    glm::vec3 position;
+    glm::vec3 rotation;
+};
+
+
 
 // Properties
 const GLuint WIDTH = 800, HEIGHT = 600;
@@ -117,6 +128,161 @@ float vertices[] = {
 //Variables globales para boton de musica
 Mix_Music* music = nullptr;
 bool musicOn = false;
+
+// Sistema de keyframes para la pelota
+std::vector<Keyframe> keyframes;
+int currentKeyframe = 0;
+float animationTime = 0.0f;
+bool playingKeyframes = false;
+float animationDuration = 0.0f;
+glm::vec3 ballPosition = glm::vec3(-20.3f, -1.9f, -28.0f);  // Posición inicial 
+glm::vec3 ballRotation = glm::vec3(0.0f, 0.0f, 0.0f);
+float playerAnimationTime = 0.0f;  
+bool ballAnimationTriggered = false;
+bool playerAnimationPlayed = false;
+bool hasPlayedOnce = false;
+bool animationActivated = false;
+
+bool person1AnimationActive = false;
+bool person2AnimationActive = false;
+float person1AnimationStartTime = 0.0f;
+float person2AnimationStartTime = 0.0f;
+bool person1AnimationPlayed = false;
+bool person2AnimationPlayed = false;
+float person1FrozenTime = 0.0f;
+float person2FrozenTime = 0.0f;
+
+// Interpolación lineal
+float lerp(float a, float b, float t) {
+    return a + (b - a) * t;
+}
+
+glm::vec3 lerpVec3(glm::vec3 a, glm::vec3 b, float t) {
+    return glm::vec3(
+        lerp(a.x, b.x, t),
+        lerp(a.y, b.y, t),
+        lerp(a.z, b.z, t)
+    );
+}
+
+// Configurar keyframes del tiro parabólico
+void setupParabolicKeyframes() {
+    keyframes.clear();
+
+    // Keyframe 0: Posición inicial
+    Keyframe kf0;
+    kf0.time = 0.0f;
+    kf0.position = glm::vec3(-20.3f, -1.9f, -28.0f);
+    kf0.rotation = glm::vec3(0.0f, 0.0f, 0.0f);
+    keyframes.push_back(kf0);
+
+    // Keyframe 1: Momento del contacto (frame 13 a 30fps = 0.433 segundos)
+    Keyframe kf1;
+    kf1.time = 0.433f;  
+    kf1.position = glm::vec3(-20.3f, -1.9f, -28.0f);
+    kf1.rotation = glm::vec3(0.0f, 0.0f, 0.0f);
+    keyframes.push_back(kf1);
+
+    // Keyframe 2: Despegue (justo después del contacto)
+    Keyframe kf2;
+    kf2.time = 0.5f;  
+    kf2.position = glm::vec3(-20.3f, -0.5f, -24.0f);
+    kf2.rotation = glm::vec3(180.0f, 0.0f, 0.0f);
+    keyframes.push_back(kf2);
+
+    // Keyframe 3: Punto más alto
+    Keyframe kf3;
+    kf3.time = 1.2f;
+    kf3.position = glm::vec3(-20.3f, 4.0f, -15.0f);
+    kf3.rotation = glm::vec3(360.0f, 0.0f, 0.0f);
+    keyframes.push_back(kf3);
+
+    // Keyframe 4: Bajada (MÁS CERCA DEL SUELO)
+    Keyframe kf4;
+    kf4.time = 1.8f;
+    kf4.position = glm::vec3(-20.3f, -0.5f, -6.0f);
+    kf4.rotation = glm::vec3(540.0f, 0.0f, 0.0f);
+    keyframes.push_back(kf4);
+
+    // Keyframe 5: Aterrizaje (TOCANDO EL SUELO)
+    Keyframe kf5;
+    kf5.time = 2.2f;  
+    kf5.position = glm::vec3(-20.3f, -1.9f, -2.0f);
+    kf5.rotation = glm::vec3(720.0f, 0.0f, 0.0f);
+    keyframes.push_back(kf5);
+
+    // Keyframe 6: PAUSA en el suelo 
+    Keyframe kf6;
+    kf6.time = 3.5f;  
+    kf6.position = glm::vec3(-20.3f, -1.9f, -2.0f);
+    kf6.rotation = glm::vec3(720.0f, 0.0f, 0.0f);
+    keyframes.push_back(kf6);
+
+    animationDuration = keyframes.back().time;
+}
+// Interpolar entre keyframes
+void interpolateKeyframes() {
+    if (!playingKeyframes || keyframes.size() < 2) return;
+
+    int nextKeyframe = currentKeyframe + 1;
+
+    if (nextKeyframe >= keyframes.size()) {
+        ballPosition = keyframes.back().position;
+        ballRotation = keyframes.back().rotation;
+        return; 
+    }
+
+    Keyframe& kf1 = keyframes[currentKeyframe];
+    Keyframe& kf2 = keyframes[nextKeyframe];
+
+    float t = (animationTime - kf1.time) / (kf2.time - kf1.time);
+    t = glm::clamp(t, 0.0f, 1.0f);
+
+    ballPosition = lerpVec3(kf1.position, kf2.position, t);
+    ballRotation = lerpVec3(kf1.rotation, kf2.rotation, t);
+
+    if (animationTime >= kf2.time) {
+        currentKeyframe++;
+    }
+}
+
+// Actualizar animación
+void UpdateBallAnimation(float currentTime) {
+    if (playingKeyframes) {
+        animationTime = currentTime - playerAnimationTime;
+        interpolateKeyframes();
+
+        if (animationTime >= animationDuration) {
+            playingKeyframes = false;
+            ballPosition = keyframes.back().position;  
+            ballRotation = keyframes.back().rotation;
+            animationTime = 0.0f;
+            currentKeyframe = 0;
+            std::cout << "Pelota en suelo: Y = " << ballPosition.y << "\n";  
+        }
+    }
+}
+void CheckAndTriggerBallAnimation(float currentTime) {
+    // Solo funciona si la animación fue activada con B
+    if (!animationActivated || playingKeyframes) return;
+
+    float timeInAnimation = currentTime - playerAnimationTime;
+    float currentFrame = timeInAnimation * 30.0f;  // Convertir a frames (30 FPS)
+
+    // Activar pelota en el frame 13
+    if (currentFrame >= 12.0f && currentFrame <= 14.0f && !ballAnimationTriggered) {
+        setupParabolicKeyframes();
+        playingKeyframes = true;
+        ballAnimationTriggered = true;
+        std::cout << "✓ Pelota disparada en frame: " << currentFrame << "\n";
+    }
+
+    // Resetear trigger
+    if (currentFrame < 12.0f || currentFrame > 14.0f) {
+        ballAnimationTriggered = false;
+    }
+}
+
 
 
 int main()
@@ -320,6 +486,11 @@ int main()
         glfwPollEvents();
         DoMovement();
 
+        double t = glfwGetTime();
+        CheckAndTriggerBallAnimation(t);
+        UpdateBallAnimation(t);  
+
+
         // Clear the colorbuffer
         glClearColor(0.02f, 0.02f, 0.02f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -385,17 +556,49 @@ int main()
         glUniformMatrix4fv(glGetUniformLocation(lightingShader.Program, "model"), 1, GL_FALSE, glm::value_ptr(model));
         backroom.Draw(lightingShader);
 
+        
+
+        // Dibujar balón (
+        shader.Use();
         glm::mat4 model2(1);
-        model2 = glm::translate(model2, glm::vec3(-20.0f, -2.0f, -30.0f)); // mismo Z que el otro
+
+        if (playingKeyframes) {
+            // Usar posición de keyframes
+            model2 = glm::translate(model2, ballPosition);
+            model2 = glm::rotate(model2, glm::radians(ballRotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+            model2 = glm::rotate(model2, glm::radians(ballRotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+            model2 = glm::rotate(model2, glm::radians(ballRotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+        }
+        else {
+            // Posición estática original
+            model2 = glm::translate(model2, glm::vec3(-20.3f, -1.9f, -28.0f));
+        }
+
         model2 = glm::scale(model2, glm::vec3(1.0f));
         glUniformMatrix4fv(glGetUniformLocation(lightingShader.Program, "model"), 1, GL_FALSE, glm::value_ptr(model2));
         balon.Draw(lightingShader);
 
 
-        double t = glfwGetTime();
 
         // PERSONA 1
-        animacion.UpdateAnimation(t);
+        if (person1AnimationActive && !person1AnimationPlayed) {
+            float timeInAnimation = t - person1AnimationStartTime;
+            float durationInSeconds = 843.0f / 30.0f;  // 843 frames a 30 FPS = 28.1 segundos 
+
+            animacion.UpdateAnimation(person1AnimationStartTime + timeInAnimation);
+
+            if (timeInAnimation >= durationInSeconds) {
+                person1AnimationPlayed = true;
+                person1AnimationActive = false;
+              
+                std::cout << "Animación persona 1 completada - volviendo al inicio\n";
+            }
+        }
+      
+        else {
+            animacion.UpdateAnimation(0.0f);
+        }
+
         std::vector<glm::mat4> bones1;
         animacion.GetBoneMatrices(bones1, 100);
 
@@ -417,7 +620,22 @@ int main()
 
 
         // PERSONA 2
-        animacion2.UpdateAnimation(t);
+        if (person2AnimationActive && !person2AnimationPlayed) {
+            float timeInAnimation = t - person2AnimationStartTime;
+            float durationInSeconds = 843.0f / 30.0f;  // 843 frames a 30 FPS = 28.1 segundos
+
+            animacion2.UpdateAnimation(person2AnimationStartTime + timeInAnimation);
+
+            if (timeInAnimation >= durationInSeconds) {
+                person2AnimationPlayed = true;
+                person2AnimationActive = false;
+                std::cout << "Animación persona 2 completada - volviendo al inicio\n";
+            }
+        }
+        else {
+            animacion2.UpdateAnimation(0.0f);
+        }
+
         std::vector<glm::mat4> bones2;
         animacion2.GetBoneMatrices(bones2, 100);
 
@@ -426,24 +644,41 @@ int main()
 
         // PERSONA 2
         glm::mat4 modelAnim2(1.0f);
-        modelAnim2 = glm::translate(modelAnim2, glm::vec3(-16.0f, -2.0f, -60.0f)); // mismo Z que el otro
+        modelAnim2 = glm::translate(modelAnim2, glm::vec3(-13.0f, -2.0f, -60.0f)); // mismo Z que el otro
         modelAnim2 = glm::rotate(modelAnim2, glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         modelAnim2 = glm::scale(modelAnim2, glm::vec3(0.035f));
         glUniformMatrix4fv(glGetUniformLocation(skinnedShader.Program, "model"), 1, GL_FALSE, glm::value_ptr(modelAnim2));
 
         animacion2.Draw(skinnedShader);
 
-        // JUGADOR
-        animacion3.UpdateAnimation(t);
-        std::vector<glm::mat4> bones3;
-        animacion3.GetBoneMatrices(bones3, 100);
+       // JUGADOR - Solo animar cuando se active con B
+if (animationActivated && !playerAnimationPlayed) {
+    float timeInAnimation = t - playerAnimationTime;
+    float durationInSeconds = 48.0f / 30.0f;  // 48 frames a 30 FPS = 1.6 segundos
+    
+    animacion3.UpdateAnimation(playerAnimationTime + timeInAnimation);
+
+    // Verificar si la animación llegó al final
+    if (timeInAnimation >= durationInSeconds) {
+        playerAnimationPlayed = true;
+        animationActivated = false;  // para desactivar
+        std::cout << "Animación del jugador completada - volviendo al inicio\n";
+    }
+}
+else {
+    // Mantener en frame 0
+    animacion3.UpdateAnimation(0.0f);
+}
+
+std::vector<glm::mat4> bones3;
+animacion3.GetBoneMatrices(bones3, 100);
 
         if (bonesLoc >= 0 && !bones3.empty())
             glUniformMatrix4fv(bonesLoc, (GLsizei)bones3.size(), GL_FALSE, &bones3[0][0][0]);
 
         //JUGADOR
         glm::mat4 modelAnim3(1.0f);
-        modelAnim3 = glm::translate(modelAnim3, glm::vec3(-20.0f, -2.0f, -30.0f)); // mismo Z que el otro
+        modelAnim3 = glm::translate(modelAnim3, glm::vec3(-20.0f, -2.0f, -30.0f)); 
         modelAnim3 = glm::scale(modelAnim3, glm::vec3(0.035f));
         glUniformMatrix4fv(glGetUniformLocation(skinnedShader.Program, "model"), 1, GL_FALSE, glm::value_ptr(modelAnim3));
 
@@ -549,7 +784,51 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
             std::cout << "Musica OFF\n";
         }
     }
+   
+    // Tecla B - Iniciar animación pelota y jugador
+    if (key == GLFW_KEY_B && action == GLFW_PRESS) {
+        if (!animationActivated) {  // Solo si no está activada
+            animationActivated = true;  // ← Activar todo
+            playerAnimationTime = glfwGetTime();
+            playerAnimationPlayed = false;
+            ballAnimationTriggered = false;
+            animationTime = 0.0f;
+            currentKeyframe = 0;
+            std::cout << "✓ Animación iniciada con tecla B\n";
+        }
+    }
+    if (key == GLFW_KEY_R && action == GLFW_PRESS) {
+        // Resetear COMPLETAMENTE
+        animationActivated = false;  
+        playerAnimationPlayed = false;
+        playingKeyframes = false;
+        ballAnimationTriggered = false;
+        animationTime = 0.0f;
+        currentKeyframe = 0;
+        ballPosition = glm::vec3(-20.0f, -1.9f, -28.0f);
+        ballRotation = glm::vec3(0.0f, 0.0f, 0.0f);
+        // Agregar reset de personas:
+        person1AnimationActive = false;
+        person2AnimationActive = false;
+        person1AnimationPlayed = false;
+        person2AnimationPlayed = false;
+        person1AnimationStartTime = 0.0f;
+        person2AnimationStartTime = 0.0f;
 
+        std::cout << "✓ Todo reseteado - Presiona B para jugador/pelota, T para personas\n";
+    }
+    // Tecla T - Iniciar animaciones de las personas bailando
+    if (key == GLFW_KEY_T && action == GLFW_PRESS) {
+        if (!person1AnimationActive) {  // Solo si no están activadas
+            person1AnimationActive = true;
+            person2AnimationActive = true;
+            person1AnimationStartTime = glfwGetTime();
+            person2AnimationStartTime = glfwGetTime();
+            person1AnimationPlayed = false;
+            person2AnimationPlayed = false;
+            std::cout << "✓ Animaciones de personas iniciadas\n";
+        }
+    }
 
 
 }
