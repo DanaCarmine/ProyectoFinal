@@ -20,6 +20,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h" />
+    <ClInclude Include="Mesh.h" />
+    <ClInclude Include="Model.h" />
     <ClInclude Include="Shader.h" />
     <ClInclude Include="Texture.h" />
   </ItemGroup>
@@ -35,6 +37,8 @@
     <None Include="Shader\modelLoading.vs" />
     <None Include="Shader\SkyBox.frag" />
     <None Include="Shader\SkyBox.vs" />
+    <None Include="Shader\_skin_runtime.vs" />
+    <None Include="Shader\_tex_runtime.frag" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

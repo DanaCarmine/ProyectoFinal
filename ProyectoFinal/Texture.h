@@ -52,7 +52,7 @@ public:
 	}
 
 
-	static GLuint LoadCubemap(vector<const GLchar * > faces)
+	static GLuint LoadCubemap(std::vector<const GLchar * > faces)
 	{
 		GLuint textureID;
 		glGenTextures(1, &textureID);
