@@ -1,5 +1,4 @@
 #version 330 core
-
 #define NUMBER_OF_POINT_LIGHTS 8
 
 struct Material {
@@ -36,6 +35,10 @@ uniform DirLight dirLight;
 uniform PointLight pointLights[NUMBER_OF_POINT_LIGHTS];
 uniform Material material;
 
+// Para el cubo de agua sin textura
+uniform bool useTexture;
+uniform vec3 objectColor;
+
 vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir);
 vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir);
 
@@ -51,8 +54,13 @@ void main()
     for (int i = 0; i < NUMBER_OF_POINT_LIGHTS; i++) {
         result += CalcPointLight(pointLights[i], norm, FragPos, viewDir);
     }
-
-    color = vec4(result, 1.0);
+    
+    // Si no usa textura, aplicar transparencia
+    if (!useTexture) {
+        color = vec4(result, 0.5); // 0.5 = 50% transparente
+    } else {
+        color = vec4(result, 1.0);
+    }
 }
 
 vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir)
@@ -61,9 +69,15 @@ vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir)
     float diff = max(dot(normal, lightDir), 0.0);
     vec3 reflectDir = reflect(-lightDir, normal);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
-    vec3 ambient = light.ambient * vec3(texture(material.diffuse, TexCoords));
-    vec3 diffuse = light.diffuse * diff * vec3(texture(material.diffuse, TexCoords));
-    vec3 specular = light.specular * spec * vec3(texture(material.specular, TexCoords));
+    
+    // Usar textura o color sólido
+    vec3 baseColor = useTexture ? vec3(texture(material.diffuse, TexCoords)) : objectColor;
+    vec3 specColor = useTexture ? vec3(texture(material.specular, TexCoords)) : vec3(1.0);
+    
+    vec3 ambient = light.ambient * baseColor;
+    vec3 diffuse = light.diffuse * diff * baseColor;
+    vec3 specular = light.specular * spec * specColor;
+    
     return (ambient + diffuse + specular);
 }
 
@@ -75,11 +89,18 @@ vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
     float distance = length(light.position - fragPos);
     float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));
-    vec3 ambient = light.ambient * vec3(texture(material.diffuse, TexCoords));
-    vec3 diffuse = light.diffuse * diff * vec3(texture(material.diffuse, TexCoords));
-    vec3 specular = light.specular * spec * vec3(texture(material.specular, TexCoords));
+    
+    // Usar textura o color sólido
+    vec3 baseColor = useTexture ? vec3(texture(material.diffuse, TexCoords)) : objectColor;
+    vec3 specColor = useTexture ? vec3(texture(material.specular, TexCoords)) : vec3(1.0);
+    
+    vec3 ambient = light.ambient * baseColor;
+    vec3 diffuse = light.diffuse * diff * baseColor;
+    vec3 specular = light.specular * spec * specColor;
+    
     ambient *= attenuation;
     diffuse *= attenuation;
     specular *= attenuation;
+    
     return (ambient + diffuse + specular);
 }
