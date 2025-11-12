@@ -75,7 +75,6 @@ Pc 0.000000
 Pcr 0.030000
 aniso 0.000000
 anisor 0.000000
-map_Kd pared_blanca.png
 
 newmtl Material.008
 Kd 0.019779 0.019779 0.019779
@@ -316,16 +315,6 @@ Pcr 0.030000
 aniso 0.000000
 anisor 0.000000
 map_Kd plantabaja.png
-
-newmtl Material.034
-Ns 250.000000
-Ka 1.000000 1.000000 1.000000
-Ks 0.500000 0.500000 0.500000
-Ke 0.000000 0.000000 0.000000
-Ni 1.500000
-d 1.000000
-illum 2
-map_Kd paredblanca.jpg
 
 newmtl Material.037
 Ks 0.500000 0.500000 0.500000
