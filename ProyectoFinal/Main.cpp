@@ -274,7 +274,7 @@ void CheckAndTriggerBallAnimation(float currentTime) {
         setupParabolicKeyframes();
         playingKeyframes = true;
         ballAnimationTriggered = true;
-        std::cout << "✓ Pelota disparada en frame: " << currentFrame << "\n";
+        std::cout << "Pelota disparada en frame : " << currentFrame << "\n";
     }
 
     // Resetear trigger
@@ -362,6 +362,7 @@ int main()
     Model animacion((char*)"Models/Baile2.fbx");
     Model animacion2((char*)"Models/baile1.fbx");
     Model animacion3((char*)"Models/jugador1.fbx");
+    Model techo((char*)"Models/Techo/techo.obj");
 
 
     GLfloat skyboxVertices[] = {
@@ -550,6 +551,10 @@ int main()
         // Posicion de la camara
         glUniform3f(glGetUniformLocation(lightingShader.Program, "viewPos"), camera.GetPosition().x, camera.GetPosition().y, camera.GetPosition().z);
 
+        lightingShader.Use();
+        glm::mat4 modelTecho(1);
+        glUniformMatrix4fv(glGetUniformLocation(lightingShader.Program, "model"), 1, GL_FALSE, glm::value_ptr(modelTecho));
+        techo.Draw(lightingShader);
 
         // Draw the loaded model
         glm::mat4 model(1);
@@ -591,7 +596,7 @@ int main()
                 person1AnimationPlayed = true;
                 person1AnimationActive = false;
               
-                std::cout << "Animación persona 1 completada - volviendo al inicio\n";
+                std::cout << "Animacion persona 1 completada - volviendo al inicio\n";
             }
         }
       
@@ -629,7 +634,7 @@ int main()
             if (timeInAnimation >= durationInSeconds) {
                 person2AnimationPlayed = true;
                 person2AnimationActive = false;
-                std::cout << "Animación persona 2 completada - volviendo al inicio\n";
+                std::cout << "Animacion persona 2 completada - volviendo al inicio\n";
             }
         }
         else {
@@ -662,7 +667,7 @@ if (animationActivated && !playerAnimationPlayed) {
     if (timeInAnimation >= durationInSeconds) {
         playerAnimationPlayed = true;
         animationActivated = false;  // para desactivar
-        std::cout << "Animación del jugador completada - volviendo al inicio\n";
+        std::cout << "Animacion del jugador completada - volviendo al inicio\n";
     }
 }
 else {
@@ -794,7 +799,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
             ballAnimationTriggered = false;
             animationTime = 0.0f;
             currentKeyframe = 0;
-            std::cout << "✓ Animación iniciada con tecla B\n";
+            std::cout << "Animacion iniciada con tecla B\n";
         }
     }
     if (key == GLFW_KEY_R && action == GLFW_PRESS) {
@@ -815,7 +820,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
         person1AnimationStartTime = 0.0f;
         person2AnimationStartTime = 0.0f;
 
-        std::cout << "✓ Todo reseteado - Presiona B para jugador/pelota, T para personas\n";
+        std::cout << "Todo reseteado - Presiona B para jugador/pelota, T para personas\n";
     }
     // Tecla T - Iniciar animaciones de las personas bailando
     if (key == GLFW_KEY_T && action == GLFW_PRESS) {
@@ -826,7 +831,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
             person2AnimationStartTime = glfwGetTime();
             person1AnimationPlayed = false;
             person2AnimationPlayed = false;
-            std::cout << "✓ Animaciones de personas iniciadas\n";
+            std::cout << "Animaciones de personas iniciadas\n";
         }
     }
 
