@@ -504,10 +504,10 @@ int main()
         glUniformMatrix4fv(glGetUniformLocation(lightingShader.Program, "view"), 1, GL_FALSE, glm::value_ptr(view));
 
         // Luz direccional 
-        glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.direction"), -0.2f, -1.0f, -0.3f);
-        glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.ambient"), 0.01f, 0.01f, 0.01f);
-        glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.diffuse"), 0.03f, 0.03f, 0.03f);
-        glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.specular"), 0.02f, 0.02f, 0.02f);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.direction"), -0.2f, -1.0f, -0.3f); // dirección de la luz
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.ambient"), 0.01f, 0.01f, 0.01f); // aumento de luz ambiental
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.diffuse"), 0.8f, 0.8f, 0.8f); // aumento de luz difusa
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.specular"), 0.5f, 0.5f, 0.5f); // mayor brillo especular
 
         glm::vec3 white = glm::vec3(1.0f);
         glm::vec3 red = glm::vec3(1.0f, 0.0f, 0.0f); //  rojo 
@@ -528,7 +528,7 @@ int main()
             // Ajuste de intensidad para luces 003, 004 y 005 (indices 0, 1, 6)
             float diffuseIntensity = 2.0f;
             if (i == 0 || i == 1 || i == 6)
-                diffuseIntensity = 0.6f; // mas suaves
+                diffuseIntensity = 0.1f; // mas suaves
 
             // Luz difusa
             glUniform3fv(glGetUniformLocation(lightingShader.Program, ("pointLights[" + num + "].diffuse").c_str()),
