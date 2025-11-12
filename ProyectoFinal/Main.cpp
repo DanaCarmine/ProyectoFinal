@@ -274,7 +274,7 @@ void CheckAndTriggerBallAnimation(float currentTime) {
         setupParabolicKeyframes();
         playingKeyframes = true;
         ballAnimationTriggered = true;
-        std::cout << "Pelota disparada en frame : " << currentFrame << "\n";
+        std::cout << "✓ Pelota disparada en frame: " << currentFrame << "\n";
     }
 
     // Resetear trigger
@@ -362,7 +362,6 @@ int main()
     Model animacion((char*)"Models/Baile2.fbx");
     Model animacion2((char*)"Models/baile1.fbx");
     Model animacion3((char*)"Models/jugador1.fbx");
-    Model techo((char*)"Models/Techo/techo.obj");
 
 
     GLfloat skyboxVertices[] = {
@@ -505,10 +504,10 @@ int main()
         glUniformMatrix4fv(glGetUniformLocation(lightingShader.Program, "view"), 1, GL_FALSE, glm::value_ptr(view));
 
         // Luz direccional 
-        glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.direction"), -0.2f, -1.0f, -0.3f); // dirección de la luz
-        glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.ambient"), 0.01f, 0.01f, 0.01f); // aumento de luz ambiental
-        glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.diffuse"), 0.8f, 0.8f, 0.8f); // aumento de luz difusa
-        glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.specular"), 0.5f, 0.5f, 0.5f); // mayor brillo especular
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.direction"), -0.2f, -1.0f, -0.3f);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.ambient"), 0.01f, 0.01f, 0.01f);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.diffuse"), 0.03f, 0.03f, 0.03f);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.specular"), 0.02f, 0.02f, 0.02f);
 
         glm::vec3 white = glm::vec3(1.0f);
         glm::vec3 red = glm::vec3(1.0f, 0.0f, 0.0f); //  rojo 
@@ -529,7 +528,7 @@ int main()
             // Ajuste de intensidad para luces 003, 004 y 005 (indices 0, 1, 6)
             float diffuseIntensity = 2.0f;
             if (i == 0 || i == 1 || i == 6)
-                diffuseIntensity = 0.1f; // mas suaves
+                diffuseIntensity = 0.6f; // mas suaves
 
             // Luz difusa
             glUniform3fv(glGetUniformLocation(lightingShader.Program, ("pointLights[" + num + "].diffuse").c_str()),
@@ -551,10 +550,6 @@ int main()
         // Posicion de la camara
         glUniform3f(glGetUniformLocation(lightingShader.Program, "viewPos"), camera.GetPosition().x, camera.GetPosition().y, camera.GetPosition().z);
 
-        lightingShader.Use();
-        glm::mat4 modelTecho(1);
-        glUniformMatrix4fv(glGetUniformLocation(lightingShader.Program, "model"), 1, GL_FALSE, glm::value_ptr(modelTecho));
-        techo.Draw(lightingShader);
 
         // Draw the loaded model
         glm::mat4 model(1);
@@ -596,7 +591,7 @@ int main()
                 person1AnimationPlayed = true;
                 person1AnimationActive = false;
               
-                std::cout << "Animacion persona 1 completada - volviendo al inicio\n";
+                std::cout << "Animación persona 1 completada - volviendo al inicio\n";
             }
         }
       
@@ -634,7 +629,7 @@ int main()
             if (timeInAnimation >= durationInSeconds) {
                 person2AnimationPlayed = true;
                 person2AnimationActive = false;
-                std::cout << "Animacion persona 2 completada - volviendo al inicio\n";
+                std::cout << "Animación persona 2 completada - volviendo al inicio\n";
             }
         }
         else {
@@ -667,7 +662,7 @@ if (animationActivated && !playerAnimationPlayed) {
     if (timeInAnimation >= durationInSeconds) {
         playerAnimationPlayed = true;
         animationActivated = false;  // para desactivar
-        std::cout << "Animacion del jugador completada - volviendo al inicio\n";
+        std::cout << "Animación del jugador completada - volviendo al inicio\n";
     }
 }
 else {
@@ -799,7 +794,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
             ballAnimationTriggered = false;
             animationTime = 0.0f;
             currentKeyframe = 0;
-            std::cout << "Animacion iniciada con tecla B\n";
+            std::cout << "✓ Animación iniciada con tecla B\n";
         }
     }
     if (key == GLFW_KEY_R && action == GLFW_PRESS) {
@@ -820,7 +815,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
         person1AnimationStartTime = 0.0f;
         person2AnimationStartTime = 0.0f;
 
-        std::cout << "Todo reseteado - Presiona B para jugador/pelota, T para personas\n";
+        std::cout << "✓ Todo reseteado - Presiona B para jugador/pelota, T para personas\n";
     }
     // Tecla T - Iniciar animaciones de las personas bailando
     if (key == GLFW_KEY_T && action == GLFW_PRESS) {
@@ -831,7 +826,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
             person2AnimationStartTime = glfwGetTime();
             person1AnimationPlayed = false;
             person2AnimationPlayed = false;
-            std::cout << "Animaciones de personas iniciadas\n";
+            std::cout << "✓ Animaciones de personas iniciadas\n";
         }
     }
 
