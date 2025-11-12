@@ -152,6 +152,9 @@ bool person2AnimationPlayed = false;
 float person1FrozenTime = 0.0f;
 float person2FrozenTime = 0.0f;
 
+float waterWaveTime = 0.0f;
+GLuint waterVAO, waterVBO;
+
 // Interpolación lineal
 float lerp(float a, float b, float t) {
     return a + (b - a) * t;
@@ -283,7 +286,159 @@ void CheckAndTriggerBallAnimation(float currentTime) {
     }
 }
 
+//Funcion para crear el cubo
+void setupWaterCube() {
+    float waterVertices[] = {
+        // Posiciones          Normales
+        // Cara frontal
+        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+         0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
 
+        // Cara trasera
+        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+         0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+         0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+
+        // Cara izquierda
+        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+
+        // Cara derecha
+         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+
+         // Cara inferior
+         -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+          0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+          0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+          0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+         -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+         -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+
+         // Cara superior
+         -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+          0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+          0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+          0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+         -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+         -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f
+    };
+
+    glGenVertexArrays(1, &waterVAO);
+    glGenBuffers(1, &waterVBO);
+
+    glBindVertexArray(waterVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, waterVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(waterVertices), waterVertices, GL_STATIC_DRAW);
+
+    // Posición
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    // Normales
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    glBindVertexArray(0);
+}
+//Funcion para dibujar el agua
+void drawWaterCube(Shader& shader, glm::mat4 projection, glm::mat4 view, float time) {
+    shader.Use();
+
+    // Habilitar transparencia
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    // Ver interior del cubo
+    glDisable(GL_CULL_FACE);
+
+    // Indicar que NO use texturas
+    glUniform1i(glGetUniformLocation(shader.Program, "useTexture"), 0); // 0 = false
+
+    // Color del agua (azul translúcido)
+    glUniform3f(glGetUniformLocation(shader.Program, "objectColor"), 0.2f, 0.5f, 0.9f);
+
+    // Posición del cubo (convertida de Blender a OpenGL)
+    glm::mat4 model(1.0f);
+    glm::vec3 waterPos = convertBlenderToOpenGL(-31.786f, 46.235f, -0.74377f);
+    model = glm::translate(model, waterPos);
+
+    // Escala (convertida: X, Z de Blender, Y de Blender)
+    model = glm::scale(model, glm::vec3(18.8f, 2.42f, 13.2f));
+
+    // Animación de ondas (rotación oscilatoria)
+    float waveX = sin(time * 2.5f) * 0.015f;
+    float waveZ = cos(time * 1.8f) * 0.015f;
+    model = glm::rotate(model, waveX, glm::vec3(1.0f, 0.0f, 0.0f));
+    model = glm::rotate(model, waveZ, glm::vec3(0.0f, 0.0f, 1.0f));
+
+    glUniformMatrix4fv(glGetUniformLocation(shader.Program, "model"), 1, GL_FALSE, glm::value_ptr(model));
+    glUniformMatrix4fv(glGetUniformLocation(shader.Program, "view"), 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(glGetUniformLocation(shader.Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+
+    // Material brillante del agua
+    glUniform1f(glGetUniformLocation(shader.Program, "material.shininess"), 64.0f);
+
+    // Posición de la cámara para efectos
+    glUniform3f(glGetUniformLocation(shader.Program, "viewPos"),
+        camera.GetPosition().x, camera.GetPosition().y, camera.GetPosition().z);
+    // ====== CONFIGURACION DE LUCES PARA EL AGUA ======
+
+   // Luz direccional con tono azul brillante
+    glUniform3f(glGetUniformLocation(shader.Program, "dirLight.direction"), -0.2f, -1.0f, -0.3f);
+    glUniform3f(glGetUniformLocation(shader.Program, "dirLight.ambient"), 0.3f, 0.4f, 0.7f);  // Azul ambiente
+    glUniform3f(glGetUniformLocation(shader.Program, "dirLight.diffuse"), 0.4f, 0.6f, 1.0f);   // Azul difuso
+    glUniform3f(glGetUniformLocation(shader.Program, "dirLight.specular"), 0.6f, 0.8f, 1.0f);  // Azul especular
+
+    // Configurar point lights con efecto azul agua
+    for (int i = 0; i < 8; i++) {
+        std::string num = std::to_string(i);
+
+        glUniform3fv(glGetUniformLocation(shader.Program, ("pointLights[" + num + "].position").c_str()),
+            1, glm::value_ptr(pointLightPositions[i]));
+        // Color azulado para las luces
+        glm::vec3 waterColor = glm::vec3(0.3f, 0.5f, 1.0f);
+
+        glUniform3fv(glGetUniformLocation(shader.Program, ("pointLights[" + num + "].ambient").c_str()),
+            1, glm::value_ptr(waterColor * 0.4f));
+
+        glUniform3fv(glGetUniformLocation(shader.Program, ("pointLights[" + num + "].diffuse").c_str()),
+            1, glm::value_ptr(waterColor * 0.8f));
+
+        glUniform3fv(glGetUniformLocation(shader.Program, ("pointLights[" + num + "].specular").c_str()),
+            1, glm::value_ptr(waterColor * 1.2f));
+
+        glUniform1f(glGetUniformLocation(shader.Program, ("pointLights[" + num + "].constant").c_str()), 1.0f);
+        glUniform1f(glGetUniformLocation(shader.Program, ("pointLights[" + num + "].linear").c_str()), 0.07f);
+        glUniform1f(glGetUniformLocation(shader.Program, ("pointLights[" + num + "].quadratic").c_str()), 0.017f);
+    }
+
+    glBindVertexArray(waterVAO);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+    glBindVertexArray(0);
+
+    // Restaurar estados
+    glDisable(GL_BLEND);
+    glEnable(GL_CULL_FACE);
+
+    //  Reactiva texturas para otros objetos
+    glUniform1i(glGetUniformLocation(shader.Program, "useTexture"), 1); // 1 = true
+}
 
 int main()
 {
@@ -561,7 +716,37 @@ int main()
         glUniformMatrix4fv(glGetUniformLocation(lightingShader.Program, "model"), 1, GL_FALSE, glm::value_ptr(model));
         backroom.Draw(lightingShader);
 
+        // Actualizar tiempo de animación del agua
+            waterWaveTime = currentFrame;
 
+        // Dibujar cubo de agua 
+        drawWaterCube(lightingShader, projection, view, waterWaveTime);
+
+        // Después de dibujar el agua, restaurar las luces originales para los demás objetos
+        lightingShader.Use();
+
+        // Restaurar luz direccional original
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.direction"), -0.2f, -1.0f, -0.3f);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.ambient"), 0.01f, 0.01f, 0.01f);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.diffuse"), 0.03f, 0.03f, 0.03f);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.specular"), 0.02f, 0.02f, 0.02f);
+
+        // Restaurar point lights originales
+        for (int i = 0; i < 8; i++) {
+            std::string num = std::to_string(i);
+            glm::vec3 color = (i == 7) ? red : white;
+
+            glUniform3fv(glGetUniformLocation(lightingShader.Program, ("pointLights[" + num + "].ambient").c_str()),
+                1, glm::value_ptr(color * 0.1f));
+
+            float diffuseIntensity = (i == 0 || i == 1 || i == 6) ? 0.6f : 2.0f;
+            glUniform3fv(glGetUniformLocation(lightingShader.Program, ("pointLights[" + num + "].diffuse").c_str()),
+                1, glm::value_ptr(color * diffuseIntensity));
+
+            float specularIntensity = (i == 0 || i == 1 || i == 6) ? 0.5f : 1.0f;
+            glUniform3fv(glGetUniformLocation(lightingShader.Program, ("pointLights[" + num + "].specular").c_str()),
+                1, glm::value_ptr(color * specularIntensity));
+        }
 
         // Dibujar balón (
         lightingShader.Use();
@@ -706,6 +891,7 @@ int main()
         // Swap the buffers
         glfwSwapBuffers(window);
 
+        setupWaterCube();
     }
 
     glDeleteVertexArrays(1, &VAO);
@@ -713,6 +899,9 @@ int main()
     glDeleteBuffers(1, &EBO);
     glDeleteVertexArrays(1, &skyboxVAO);
     glDeleteBuffers(1, &skyboxVAO);
+
+    glDeleteVertexArrays(1, &waterVAO);
+    glDeleteBuffers(1, &waterVBO);
 
     if (music) {
         Mix_FreeMusic(music);
