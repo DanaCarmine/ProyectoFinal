@@ -137,7 +137,7 @@ bool playingKeyframes = false;
 float animationDuration = 0.0f;
 glm::vec3 ballPosition = glm::vec3(-20.3f, -1.9f, -28.0f);  // Posición inicial 
 glm::vec3 ballRotation = glm::vec3(0.0f, 0.0f, 0.0f);
-float playerAnimationTime = 0.0f;  
+float playerAnimationTime = 0.0f;
 bool ballAnimationTriggered = false;
 bool playerAnimationPlayed = false;
 bool hasPlayedOnce = false;
@@ -151,6 +151,9 @@ bool person1AnimationPlayed = false;
 bool person2AnimationPlayed = false;
 float person1FrozenTime = 0.0f;
 float person2FrozenTime = 0.0f;
+
+float waterWaveTime = 0.0f;
+GLuint waterVAO, waterVBO;
 
 // Interpolación lineal
 float lerp(float a, float b, float t) {
@@ -178,14 +181,14 @@ void setupParabolicKeyframes() {
 
     // Keyframe 1: Momento del contacto (frame 13 a 30fps = 0.433 segundos)
     Keyframe kf1;
-    kf1.time = 0.433f;  
+    kf1.time = 0.433f;
     kf1.position = glm::vec3(-20.3f, -1.9f, -28.0f);
     kf1.rotation = glm::vec3(0.0f, 0.0f, 0.0f);
     keyframes.push_back(kf1);
 
     // Keyframe 2: Despegue (justo después del contacto)
     Keyframe kf2;
-    kf2.time = 0.5f;  
+    kf2.time = 0.5f;
     kf2.position = glm::vec3(-20.3f, -0.5f, -24.0f);
     kf2.rotation = glm::vec3(180.0f, 0.0f, 0.0f);
     keyframes.push_back(kf2);
@@ -206,14 +209,14 @@ void setupParabolicKeyframes() {
 
     // Keyframe 5: Aterrizaje (TOCANDO EL SUELO)
     Keyframe kf5;
-    kf5.time = 2.2f;  
+    kf5.time = 2.2f;
     kf5.position = glm::vec3(-20.3f, -1.9f, -2.0f);
     kf5.rotation = glm::vec3(720.0f, 0.0f, 0.0f);
     keyframes.push_back(kf5);
 
     // Keyframe 6: PAUSA en el suelo 
     Keyframe kf6;
-    kf6.time = 3.5f;  
+    kf6.time = 3.5f;
     kf6.position = glm::vec3(-20.3f, -1.9f, -2.0f);
     kf6.rotation = glm::vec3(720.0f, 0.0f, 0.0f);
     keyframes.push_back(kf6);
@@ -229,7 +232,7 @@ void interpolateKeyframes() {
     if (nextKeyframe >= keyframes.size()) {
         ballPosition = keyframes.back().position;
         ballRotation = keyframes.back().rotation;
-        return; 
+        return;
     }
 
     Keyframe& kf1 = keyframes[currentKeyframe];
@@ -254,11 +257,11 @@ void UpdateBallAnimation(float currentTime) {
 
         if (animationTime >= animationDuration) {
             playingKeyframes = false;
-            ballPosition = keyframes.back().position;  
+            ballPosition = keyframes.back().position;
             ballRotation = keyframes.back().rotation;
             animationTime = 0.0f;
             currentKeyframe = 0;
-            std::cout << "Pelota en suelo: Y = " << ballPosition.y << "\n";  
+            std::cout << "Pelota en suelo: Y = " << ballPosition.y << "\n";
         }
     }
 }
@@ -283,7 +286,159 @@ void CheckAndTriggerBallAnimation(float currentTime) {
     }
 }
 
+//Funcion para crear el cubo
+void setupWaterCube() {
+    float waterVertices[] = {
+        // Posiciones          Normales
+        // Cara frontal
+        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+         0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
 
+        // Cara trasera
+        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+         0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+         0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+
+        // Cara izquierda
+        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+
+        // Cara derecha
+         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+
+         // Cara inferior
+         -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+          0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+          0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+          0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+         -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+         -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+
+         // Cara superior
+         -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+          0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+          0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+          0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+         -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+         -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f
+    };
+
+    glGenVertexArrays(1, &waterVAO);
+    glGenBuffers(1, &waterVBO);
+
+    glBindVertexArray(waterVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, waterVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(waterVertices), waterVertices, GL_STATIC_DRAW);
+
+    // Posición
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    // Normales
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    glBindVertexArray(0);
+}
+//Funcion para dibujar el agua
+void drawWaterCube(Shader& shader, glm::mat4 projection, glm::mat4 view, float time) {
+    shader.Use();
+
+    // Habilitar transparencia
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    // Ver interior del cubo
+    glDisable(GL_CULL_FACE);
+
+    // Indicar que NO use texturas
+    glUniform1i(glGetUniformLocation(shader.Program, "useTexture"), 0); // 0 = false
+
+    // Color del agua (azul translúcido)
+    glUniform3f(glGetUniformLocation(shader.Program, "objectColor"), 0.2f, 0.5f, 0.9f);
+
+    // Posición del cubo (convertida de Blender a OpenGL)
+    glm::mat4 model(1.0f);
+    glm::vec3 waterPos = convertBlenderToOpenGL(-31.786f, 46.235f, -0.74377f);
+    model = glm::translate(model, waterPos);
+
+    // Escala (convertida: X, Z de Blender, Y de Blender)
+    model = glm::scale(model, glm::vec3(18.8f, 2.42f, 13.2f));
+
+    // Animación de ondas (rotación oscilatoria)
+    float waveX = sin(time * 2.5f) * 0.015f;
+    float waveZ = cos(time * 1.8f) * 0.015f;
+    model = glm::rotate(model, waveX, glm::vec3(1.0f, 0.0f, 0.0f));
+    model = glm::rotate(model, waveZ, glm::vec3(0.0f, 0.0f, 1.0f));
+
+    glUniformMatrix4fv(glGetUniformLocation(shader.Program, "model"), 1, GL_FALSE, glm::value_ptr(model));
+    glUniformMatrix4fv(glGetUniformLocation(shader.Program, "view"), 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(glGetUniformLocation(shader.Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+
+    // Material brillante del agua
+    glUniform1f(glGetUniformLocation(shader.Program, "material.shininess"), 64.0f);
+
+    // Posición de la cámara para efectos
+    glUniform3f(glGetUniformLocation(shader.Program, "viewPos"),
+        camera.GetPosition().x, camera.GetPosition().y, camera.GetPosition().z);
+    // ====== CONFIGURACION DE LUCES PARA EL AGUA ======
+
+   // Luz direccional con tono azul brillante
+    glUniform3f(glGetUniformLocation(shader.Program, "dirLight.direction"), -0.2f, -1.0f, -0.3f);
+    glUniform3f(glGetUniformLocation(shader.Program, "dirLight.ambient"), 0.3f, 0.4f, 0.7f);  // Azul ambiente
+    glUniform3f(glGetUniformLocation(shader.Program, "dirLight.diffuse"), 0.4f, 0.6f, 1.0f);   // Azul difuso
+    glUniform3f(glGetUniformLocation(shader.Program, "dirLight.specular"), 0.6f, 0.8f, 1.0f);  // Azul especular
+
+    // Configurar point lights con efecto azul agua
+    for (int i = 0; i < 8; i++) {
+        std::string num = std::to_string(i);
+
+        glUniform3fv(glGetUniformLocation(shader.Program, ("pointLights[" + num + "].position").c_str()),
+            1, glm::value_ptr(pointLightPositions[i]));
+        // Color azulado para las luces
+        glm::vec3 waterColor = glm::vec3(0.3f, 0.5f, 1.0f);
+
+        glUniform3fv(glGetUniformLocation(shader.Program, ("pointLights[" + num + "].ambient").c_str()),
+            1, glm::value_ptr(waterColor * 0.4f));
+
+        glUniform3fv(glGetUniformLocation(shader.Program, ("pointLights[" + num + "].diffuse").c_str()),
+            1, glm::value_ptr(waterColor * 0.8f));
+
+        glUniform3fv(glGetUniformLocation(shader.Program, ("pointLights[" + num + "].specular").c_str()),
+            1, glm::value_ptr(waterColor * 1.2f));
+
+        glUniform1f(glGetUniformLocation(shader.Program, ("pointLights[" + num + "].constant").c_str()), 1.0f);
+        glUniform1f(glGetUniformLocation(shader.Program, ("pointLights[" + num + "].linear").c_str()), 0.07f);
+        glUniform1f(glGetUniformLocation(shader.Program, ("pointLights[" + num + "].quadratic").c_str()), 0.017f);
+    }
+
+    glBindVertexArray(waterVAO);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+    glBindVertexArray(0);
+
+    // Restaurar estados
+    glDisable(GL_BLEND);
+    glEnable(GL_CULL_FACE);
+
+    //  Reactiva texturas para otros objetos
+    glUniform1i(glGetUniformLocation(shader.Program, "useTexture"), 1); // 1 = true
+}
 
 int main()
 {
@@ -470,10 +625,10 @@ int main()
 
     GLuint cubemapTexture = TextureLoading::LoadCubemap(faces);
 
-	// Projection matrix
+    // Projection matrix
     glm::mat4 projection = glm::perspective(camera.GetZoom(), (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT, 0.1f, 100.0f);
 
-   
+
 
     // Game loop
     while (!glfwWindowShouldClose(window))
@@ -489,7 +644,7 @@ int main()
 
         double t = glfwGetTime();
         CheckAndTriggerBallAnimation(t);
-        UpdateBallAnimation(t);  
+        UpdateBallAnimation(t);
 
 
         // Clear the colorbuffer
@@ -561,7 +716,37 @@ int main()
         glUniformMatrix4fv(glGetUniformLocation(lightingShader.Program, "model"), 1, GL_FALSE, glm::value_ptr(model));
         backroom.Draw(lightingShader);
 
-        
+        // Actualizar tiempo de animación del agua
+            waterWaveTime = currentFrame;
+
+        // Dibujar cubo de agua 
+        drawWaterCube(lightingShader, projection, view, waterWaveTime);
+
+        // Después de dibujar el agua, restaurar las luces originales para los demás objetos
+        lightingShader.Use();
+
+        // Restaurar luz direccional original
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.direction"), -0.2f, -1.0f, -0.3f);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.ambient"), 0.01f, 0.01f, 0.01f);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.diffuse"), 0.03f, 0.03f, 0.03f);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.specular"), 0.02f, 0.02f, 0.02f);
+
+        // Restaurar point lights originales
+        for (int i = 0; i < 8; i++) {
+            std::string num = std::to_string(i);
+            glm::vec3 color = (i == 7) ? red : white;
+
+            glUniform3fv(glGetUniformLocation(lightingShader.Program, ("pointLights[" + num + "].ambient").c_str()),
+                1, glm::value_ptr(color * 0.1f));
+
+            float diffuseIntensity = (i == 0 || i == 1 || i == 6) ? 0.6f : 2.0f;
+            glUniform3fv(glGetUniformLocation(lightingShader.Program, ("pointLights[" + num + "].diffuse").c_str()),
+                1, glm::value_ptr(color * diffuseIntensity));
+
+            float specularIntensity = (i == 0 || i == 1 || i == 6) ? 0.5f : 1.0f;
+            glUniform3fv(glGetUniformLocation(lightingShader.Program, ("pointLights[" + num + "].specular").c_str()),
+                1, glm::value_ptr(color * specularIntensity));
+        }
 
         // Dibujar balón (
         lightingShader.Use();
@@ -595,11 +780,11 @@ int main()
             if (timeInAnimation >= durationInSeconds) {
                 person1AnimationPlayed = true;
                 person1AnimationActive = false;
-              
+
                 std::cout << "Animacion persona 1 completada - volviendo al inicio\n";
             }
         }
-      
+
         else {
             animacion.UpdateAnimation(0.0f);
         }
@@ -656,34 +841,34 @@ int main()
 
         animacion2.Draw(skinnedShader);
 
-       // JUGADOR - Solo animar cuando se active con B
-if (animationActivated && !playerAnimationPlayed) {
-    float timeInAnimation = t - playerAnimationTime;
-    float durationInSeconds = 48.0f / 30.0f;  // 48 frames a 30 FPS = 1.6 segundos
-    
-    animacion3.UpdateAnimation(playerAnimationTime + timeInAnimation);
+        // JUGADOR - Solo animar cuando se active con B
+        if (animationActivated && !playerAnimationPlayed) {
+            float timeInAnimation = t - playerAnimationTime;
+            float durationInSeconds = 48.0f / 30.0f;  // 48 frames a 30 FPS = 1.6 segundos
 
-    // Verificar si la animación llegó al final
-    if (timeInAnimation >= durationInSeconds) {
-        playerAnimationPlayed = true;
-        animationActivated = false;  // para desactivar
-        std::cout << "Animacion del jugador completada - volviendo al inicio\n";
-    }
-}
-else {
-    // Mantener en frame 0
-    animacion3.UpdateAnimation(0.0f);
-}
+            animacion3.UpdateAnimation(playerAnimationTime + timeInAnimation);
 
-std::vector<glm::mat4> bones3;
-animacion3.GetBoneMatrices(bones3, 100);
+            // Verificar si la animación llegó al final
+            if (timeInAnimation >= durationInSeconds) {
+                playerAnimationPlayed = true;
+                animationActivated = false;  // para desactivar
+                std::cout << "Animacion del jugador completada - volviendo al inicio\n";
+            }
+        }
+        else {
+            // Mantener en frame 0
+            animacion3.UpdateAnimation(0.0f);
+        }
+
+        std::vector<glm::mat4> bones3;
+        animacion3.GetBoneMatrices(bones3, 100);
 
         if (bonesLoc >= 0 && !bones3.empty())
             glUniformMatrix4fv(bonesLoc, (GLsizei)bones3.size(), GL_FALSE, &bones3[0][0][0]);
 
         //JUGADOR
         glm::mat4 modelAnim3(1.0f);
-        modelAnim3 = glm::translate(modelAnim3, glm::vec3(-20.0f, -2.0f, -30.0f)); 
+        modelAnim3 = glm::translate(modelAnim3, glm::vec3(-20.0f, -2.0f, -30.0f));
         modelAnim3 = glm::scale(modelAnim3, glm::vec3(0.035f));
         glUniformMatrix4fv(glGetUniformLocation(skinnedShader.Program, "model"), 1, GL_FALSE, glm::value_ptr(modelAnim3));
 
@@ -706,6 +891,7 @@ animacion3.GetBoneMatrices(bones3, 100);
         // Swap the buffers
         glfwSwapBuffers(window);
 
+        setupWaterCube();
     }
 
     glDeleteVertexArrays(1, &VAO);
@@ -713,6 +899,9 @@ animacion3.GetBoneMatrices(bones3, 100);
     glDeleteBuffers(1, &EBO);
     glDeleteVertexArrays(1, &skyboxVAO);
     glDeleteBuffers(1, &skyboxVAO);
+
+    glDeleteVertexArrays(1, &waterVAO);
+    glDeleteBuffers(1, &waterVBO);
 
     if (music) {
         Mix_FreeMusic(music);
@@ -789,7 +978,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
             std::cout << "Musica OFF\n";
         }
     }
-   
+
     // Tecla B - Iniciar animación pelota y jugador
     if (key == GLFW_KEY_B && action == GLFW_PRESS) {
         if (!animationActivated) {  // Solo si no está activada
@@ -804,7 +993,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
     }
     if (key == GLFW_KEY_R && action == GLFW_PRESS) {
         // Resetear COMPLETAMENTE
-        animationActivated = false;  
+        animationActivated = false;
         playerAnimationPlayed = false;
         playingKeyframes = false;
         ballAnimationTriggered = false;
@@ -855,3 +1044,4 @@ void MouseCallback(GLFWwindow* window, double xPos, double yPos)
 
     camera.ProcessMouseMovement(xOffset, yOffset);
 }
+// Fin del proyecto final
