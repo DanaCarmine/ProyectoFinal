@@ -274,11 +274,7 @@ void CheckAndTriggerBallAnimation(float currentTime) {
         setupParabolicKeyframes();
         playingKeyframes = true;
         ballAnimationTriggered = true;
-<<<<<<< Updated upstream
         std::cout << "Pelota disparada en frame : " << currentFrame << "\n";
-=======
-        std::cout << "Pelota disparada en frame: " << currentFrame << "\n";
->>>>>>> Stashed changes
     }
 
     // Resetear trigger
@@ -568,11 +564,7 @@ int main()
         
 
         // Dibujar balón (
-<<<<<<< Updated upstream
         lightingShader.Use();
-=======
-        //shader.Use();
->>>>>>> Stashed changes
         glm::mat4 model2(1);
 
         if (playingKeyframes) {
