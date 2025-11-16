@@ -155,6 +155,38 @@ float person2FrozenTime = 0.0f;
 float waterWaveTime = 0.0f;
 GLuint waterVAO, waterVBO;
 
+// Variables para animación de luces
+float lightAnimationTime = 0.0f;
+bool lightAnimationActive = false;
+float beatInterval = 3.3f; 
+float audioLevel = 0.0f;
+
+enum RoomType {
+    COLD_ROOM,  // Tonos fríos: azul, verde menta, blanco
+    WARM_ROOM,  // Tonos cálidos: amarillo, naranja
+    RED_LIGHT   // Luz roja especial
+};
+
+// Función para determinar qué tipo de luz es cada índice
+RoomType getLightRoomType(int lightIndex) {
+    // Point.003 (0), Point.005 (1), Point.004 (6) = FRÍAS
+    if (lightIndex == 0 || lightIndex == 1 || lightIndex == 6) {
+        return COLD_ROOM;
+    }
+
+    // Point.001 (2), Point (3), Point.002 (4), Light (5) = CÁLIDAS
+    if (lightIndex == 2 || lightIndex == 3 || lightIndex == 4 || lightIndex == 5) {
+        return WARM_ROOM;
+    }
+
+    // Índice 7 = Luz roja
+    if (lightIndex == 7) {
+        return RED_LIGHT;
+    }
+
+    return COLD_ROOM; // Default
+}
+
 // Interpolación lineal
 float lerp(float a, float b, float t) {
     return a + (b - a) * t;
@@ -440,6 +472,60 @@ void drawWaterCube(Shader& shader, glm::mat4 projection, glm::mat4 view, float t
     glUniform1i(glGetUniformLocation(shader.Program, "useTexture"), 1); // 1 = true
 }
 
+void audioCallback(void* userdata, Uint8* stream, int len) {
+    float sum = 0.0f;
+
+    for (int i = 0; i < len; i++) {
+        float sample = ((float)stream[i] - 128.0f) / 128.0f;
+        sum += fabs(sample);
+    }
+
+    audioLevel = sum / len;
+}
+float getLightIntensity(float time, int lightIndex) {
+    float base = 0.3f;
+
+    float audioResponse = audioLevel * 1.0f;
+
+    float phase = 0.4f * lightIndex;
+    float wave = 0.6f + 0.4f * sin(time * 2.0f + phase);
+
+    float result = base + audioResponse * wave;
+
+    if (result < base) result = base;
+    if (result > 3.0f) result = 3.0f;
+
+    return result;
+}
+
+// Función para obtener color pulsante
+glm::vec3 getPulsingColor(float time, int i) {
+    float intensity = getLightIntensity(time, i);
+    RoomType roomType = getLightRoomType(i);
+
+    if (roomType == RED_LIGHT) {
+        // Luz roja
+        return glm::vec3(intensity, 0.0f, 0.0f);
+    }
+    else if (roomType == COLD_ROOM) {
+        // Tonos FRÍOS: azul, verde menta, blanco
+        float phase = time + i;
+        float r = intensity * (0.4f + 0.3f * sin(phase * 1.2f));      // Poco rojo (blanco)
+        float g = intensity * (0.7f + 0.3f * sin(phase * 1.5f));      // Verde menta
+        float b = intensity * (0.9f + 0.1f * sin(phase * 1.8f));      // Azul
+
+        return glm::vec3(r, g, b);
+    }
+    else { // WARM_ROOM
+        // Tonos CÁLIDOS: amarillo, naranja, toque oscuro
+        float phase = time + i;
+        float r = intensity * (0.9f + 0.1f * sin(phase * 1.3f));      // Rojo
+        float g = intensity * (0.5f + 0.3f * sin(phase * 1.6f));      // Amarillo/naranja
+        float b = intensity * (0.1f + 0.1f * sin(phase * 1.0f));      // Azul (oscuro)
+
+        return glm::vec3(r, g, b);
+    }
+}
 int main()
 {
     // Init GLFW
@@ -493,8 +579,6 @@ int main()
     Shader skinnedShader("Shader/_skin_runtime.vs", "Shader/_tex_runtime.frag");
     Shader skyboxShader("Shader/SkyBox.vs", "Shader/SkyBox.frag");
 
-
-
     // --- AUDIO SETUP ---
     if (SDL_Init(SDL_INIT_AUDIO) < 0) {
         std::cout << "Error inicializando SDL: " << SDL_GetError() << std::endl;
@@ -503,6 +587,8 @@ int main()
     if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
         std::cout << "Error inicializando SDL_mixer: " << Mix_GetError() << std::endl;
     }
+
+    Mix_SetPostMix(audioCallback, nullptr);
 
     // Cargar musica (pero no se reproduce aun)
     music = Mix_LoadMUS("Audio/in the pool.mp3");
@@ -638,6 +724,11 @@ int main()
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
+        if (lightAnimationActive && musicOn) {
+            lightAnimationTime += deltaTime;
+        }
+
+
         // Check and call events
         glfwPollEvents();
         DoMovement();
@@ -666,42 +757,66 @@ int main()
         glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.specular"), 0.5f, 0.5f, 0.5f); // mayor brillo especular
 
         glm::vec3 white = glm::vec3(1.0f);
-        glm::vec3 red = glm::vec3(1.0f, 0.0f, 0.0f); //  rojo 
+        glm::vec3 red = glm::vec3(1.0f, 0.0f, 0.0f);
 
         for (int i = 0; i < 8; i++) {
             std::string num = std::to_string(i);
 
-            glm::vec3 color = white;
-            if (i == 7) color = red;
+            glm::vec3 color;
+            float intensity;
 
-            glUniform3fv(glGetUniformLocation(lightingShader.Program, ("pointLights[" + num + "].position").c_str()),
-                1, glm::value_ptr(pointLightPositions[i]));
+            if (lightAnimationActive && musicOn) {
+                // Modo animación - luces reaccionando al audio
+                color = getPulsingColor(lightAnimationTime, i);
+                intensity = getLightIntensity(lightAnimationTime, i);
 
-            // Luz ambiental tenue
-            glUniform3fv(glGetUniformLocation(lightingShader.Program, ("pointLights[" + num + "].ambient").c_str()),
-                1, glm::value_ptr(color * 0.1f));
+                glUniform3fv(glGetUniformLocation(lightingShader.Program, ("pointLights[" + num + "].position").c_str()),
+                    1, glm::value_ptr(pointLightPositions[i]));
 
-            // Ajuste de intensidad para luces 003, 004 y 005 (indices 0, 1, 6)
-            float diffuseIntensity = 2.0f;
-            if (i == 0 || i == 1 || i == 6)
-                diffuseIntensity = 0.1f; // mas suaves
+                glUniform3fv(glGetUniformLocation(lightingShader.Program, ("pointLights[" + num + "].ambient").c_str()),
+                    1, glm::value_ptr(color * 0.3f));
 
-            // Luz difusa
-            glUniform3fv(glGetUniformLocation(lightingShader.Program, ("pointLights[" + num + "].diffuse").c_str()),
-                1, glm::value_ptr(color * diffuseIntensity));
+                glUniform3fv(glGetUniformLocation(lightingShader.Program, ("pointLights[" + num + "].diffuse").c_str()),
+                    1, glm::value_ptr(color * 0.7f * intensity));
 
-            // Reflejo especular tambien reducido en esas luces
-            float specularIntensity = (i == 0 || i == 1 || i == 6) ? 0.5f : 1.0f;
-            glUniform3fv(glGetUniformLocation(lightingShader.Program, ("pointLights[" + num + "].specular").c_str()),
-                1, glm::value_ptr(color * specularIntensity));
+                glUniform3fv(glGetUniformLocation(lightingShader.Program, ("pointLights[" + num + "].specular").c_str()),
+                    1, glm::value_ptr(color * intensity));
+            }
+            else {
 
-            // Atenuacion (alcance de luz)
+            // Modo normal - luces estáticas según tipo de sala
+            RoomType roomType = getLightRoomType(i);
+
+            if (roomType == RED_LIGHT) {
+                color = red;  // Rojo
+            }
+            else if (roomType == COLD_ROOM) {
+                color = glm::vec3(0.6f, 0.9f, 1.0f);  // Azul claro/verde menta
+            }
+            else { // WARM_ROOM
+                color = glm::vec3(1.0f, 0.7f, 0.3f);  // Naranja cálido
+            }
+                float diffuseIntensity = (i == 0 || i == 1 || i == 6) ? 0.1f : 2.0f;
+
+                glUniform3fv(glGetUniformLocation(lightingShader.Program, ("pointLights[" + num + "].position").c_str()),
+                    1, glm::value_ptr(pointLightPositions[i]));
+
+                glUniform3fv(glGetUniformLocation(lightingShader.Program, ("pointLights[" + num + "].ambient").c_str()),
+                    1, glm::value_ptr(color * 0.1f));
+
+                glUniform3fv(glGetUniformLocation(lightingShader.Program, ("pointLights[" + num + "].diffuse").c_str()),
+                    1, glm::value_ptr(color * diffuseIntensity));
+
+                float specularIntensity = (i == 0 || i == 1 || i == 6) ? 0.5f : 1.0f;
+                glUniform3fv(glGetUniformLocation(lightingShader.Program, ("pointLights[" + num + "].specular").c_str()),
+                    1, glm::value_ptr(color * specularIntensity));
+            }
+
+            // Atenuación (igual para ambos modos)
             glUniform1f(glGetUniformLocation(lightingShader.Program, ("pointLights[" + num + "].constant").c_str()), 1.0f);
             glUniform1f(glGetUniformLocation(lightingShader.Program, ("pointLights[" + num + "].linear").c_str()), 0.07f);
             glUniform1f(glGetUniformLocation(lightingShader.Program, ("pointLights[" + num + "].quadratic").c_str()), 0.017f);
         }
-
-
 
         // Posicion de la camara
         glUniform3f(glGetUniformLocation(lightingShader.Program, "viewPos"), camera.GetPosition().x, camera.GetPosition().y, camera.GetPosition().z);
@@ -715,7 +830,7 @@ int main()
         glm::mat4 model(1);
         glUniformMatrix4fv(glGetUniformLocation(lightingShader.Program, "model"), 1, GL_FALSE, glm::value_ptr(model));
         backroom.Draw(lightingShader);
-
+       
         // Actualizar tiempo de animación del agua
             waterWaveTime = currentFrame;
 
@@ -767,7 +882,6 @@ int main()
         model2 = glm::scale(model2, glm::vec3(1.0f));
         glUniformMatrix4fv(glGetUniformLocation(lightingShader.Program, "model"), 1, GL_FALSE, glm::value_ptr(model2));
         balon.Draw(lightingShader);
-
 
 
         // PERSONA 1
@@ -1023,7 +1137,17 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
             std::cout << "Animaciones de personas iniciadas\n";
         }
     }
-
+    //  Tecla L - Iniciar animaciones de luces
+    if (key == GLFW_KEY_L && action == GLFW_PRESS) {
+        lightAnimationActive = !lightAnimationActive;
+        if (lightAnimationActive) {
+            lightAnimationTime = 0.0f;
+            std::cout << "Animacion de luces ACTIVADA\n";
+        }
+        else {
+            std::cout << "Animacion de luces DESACTIVADA\n";
+        }
+    }
 
 }
 
