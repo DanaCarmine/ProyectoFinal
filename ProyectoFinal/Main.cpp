@@ -42,8 +42,6 @@ struct Keyframe {
     glm::vec3 rotation;
 };
 
-
-
 // Properties
 const GLuint WIDTH = 800, HEIGHT = 600;
 int SCREEN_WIDTH, SCREEN_HEIGHT;
@@ -52,7 +50,6 @@ int SCREEN_WIDTH, SCREEN_HEIGHT;
 void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode);
 void MouseCallback(GLFWwindow* window, double xPos, double yPos);
 void DoMovement();
-
 
 // Camera
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
@@ -79,6 +76,16 @@ glm::vec3 pointLightPositions[] = {
     convertBlenderToOpenGL(-31.336f, 47.899f, 5.0656f),   // Point 004
     convertBlenderToOpenGL(-20.437f, 61.292f, 5.0656f)    // Rojo
 };
+// Cuadro 1
+glm::vec3 cuadro1Pos = convertBlenderToOpenGL(-0.94665f, 33.938f, 4.0745f);
+glm::vec3 cuadro1Rot = glm::vec3(glm::radians(90.0f), glm::radians(0.0f), glm::radians(-180.0f));
+glm::vec3 cuadro1Scale = glm::vec3(1.000f, 1.084f, 1.339f);
+
+// Cuadro 2
+glm::vec3 cuadro2Pos = convertBlenderToOpenGL(-11.172f, 29.158f, 3.5151f);
+glm::vec3 cuadro2Rot = glm::vec3(glm::radians(90.0f), glm::radians(0.0f), glm::radians(-270.0f));
+glm::vec3 cuadro2Scale = glm::vec3(1.000f, 1.089f, 1.312f);
+
 
 float vertices[] = {
      -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
@@ -155,6 +162,11 @@ float person2FrozenTime = 0.0f;
 float waterWaveTime = 0.0f;
 GLuint waterVAO, waterVBO;
 
+// Variables para animación de cuadros
+float cuadro1AnimTime = 0.0f;
+float cuadro2AnimTime = 0.0f;
+bool animCuadrosActiva = false;
+
 // Variables para animación de luces
 float lightAnimationTime = 0.0f;
 bool lightAnimationActive = false;
@@ -199,6 +211,13 @@ glm::vec3 lerpVec3(glm::vec3 a, glm::vec3 b, float t) {
         lerp(a.z, b.z, t)
     );
 }
+
+// Murciélagos
+glm::vec3 batPosition = glm::vec3(-10.3f, 3.0f, -9.0f);  // Cerca del balón
+float batScale = 0.0009f;
+float batAnimationStartTime = 0.0f;
+bool batsActive = true;  // que vuelen desde el inicio
+
 
 // Variables para el monstruo
 bool monstruoAnimationActive = false;
@@ -435,7 +454,7 @@ void drawWaterCube(Shader& shader, glm::mat4 projection, glm::mat4 view, float t
     // Posición de la cámara para efectos
     glUniform3f(glGetUniformLocation(shader.Program, "viewPos"),
         camera.GetPosition().x, camera.GetPosition().y, camera.GetPosition().z);
-    // ====== CONFIGURACION DE LUCES PARA EL AGUA ======
+    //CONFIGURACION DE LUCES PARA EL AGUA
 
    // Luz direccional con tono azul brillante
     glUniform3f(glGetUniformLocation(shader.Program, "dirLight.direction"), -0.2f, -1.0f, -0.3f);
@@ -611,6 +630,10 @@ int main()
     Model animacion3((char*)"Models/jugador1.fbx");
     Model monstruo((char*)"Models/monstruo.fbx");
     Model techo((char*)"Models/Techo/techo.obj");
+   // Model cuadro1((char*)"Models/paintingMov.fbx");
+   // Model cuadro2((char*)"Models/pinturaAnimada2.fbx");
+    Model muercielago((char*)"Models/bat_animation_fly.fbx");
+
 
 
     GLfloat skyboxVertices[] = {
@@ -735,6 +758,11 @@ int main()
             lightAnimationTime += deltaTime;
         }
 
+        if (animCuadrosActiva) {
+            cuadro1AnimTime += deltaTime;
+            cuadro2AnimTime += deltaTime * 1.5f;
+        }
+
 
         // Check and call events
         glfwPollEvents();
@@ -838,6 +866,48 @@ int main()
         glUniformMatrix4fv(glGetUniformLocation(lightingShader.Program, "model"), 1, GL_FALSE, glm::value_ptr(model));
         backroom.Draw(lightingShader);
        
+        //Dibujar cuadros
+        
+        //Cuadro 1
+       /* {
+            glm::mat4 m1(1.0f);
+            m1 = glm::translate(m1, cuadro1Pos);
+
+            if (animCuadrosActiva) {
+                float wobble = sin(cuadro1AnimTime * 2.0f) * 0.1f;
+                m1 = glm::rotate(m1, wobble, glm::vec3(0, 1, 0));
+            }
+
+            m1 = glm::rotate(m1, cuadro1Rot.x, glm::vec3(1, 0, 0));
+            m1 = glm::rotate(m1, cuadro1Rot.y, glm::vec3(0, 1, 0));
+            m1 = glm::rotate(m1, cuadro1Rot.z, glm::vec3(0, 0, 1));
+
+            m1 = glm::scale(m1, cuadro1Scale);
+
+            glUniformMatrix4fv(glGetUniformLocation(lightingShader.Program, "model"), 1, GL_FALSE, glm::value_ptr(m1));
+            cuadro1.Draw(lightingShader);
+        }*/
+
+		//Cuadro 2
+       /* {
+            glm::mat4 m2(1.0f);
+            m2 = glm::translate(m2, cuadro2Pos);
+
+            if (animCuadrosActiva) {
+                float shake = sin(cuadro2AnimTime * 6.0f) * 0.05f;
+                m2 = glm::translate(m2, glm::vec3(0, shake, 0));
+            }
+
+            m2 = glm::rotate(m2, cuadro2Rot.x, glm::vec3(1, 0, 0));
+            m2 = glm::rotate(m2, cuadro2Rot.y, glm::vec3(0, 1, 0));
+            m2 = glm::rotate(m2, cuadro2Rot.z, glm::vec3(0, 0, 1));
+
+            m2 = glm::scale(m2, cuadro2Scale);
+
+            glUniformMatrix4fv(glGetUniformLocation(lightingShader.Program, "model"), 1, GL_FALSE, glm::value_ptr(m2));
+            cuadro2.Draw(lightingShader);
+        }*/
+
         // Actualizar tiempo de animación del agua
             waterWaveTime = currentFrame;
 
@@ -1033,6 +1103,29 @@ int main()
         glUniformMatrix4fv(glGetUniformLocation(skinnedShader.Program, "model"), 1, GL_FALSE, glm::value_ptr(modelMonstruo));
         monstruo.Draw(skinnedShader);
 
+    
+        // MURCIÉLAGOS
+        if (batsActive) {
+            float batTime = fmod(currentFrame - batAnimationStartTime, 1.2f);
+            muercielago.UpdateAnimation(batTime);
+
+            std::vector<glm::mat4> bonesBat;
+            muercielago.GetBoneMatrices(bonesBat, 100);
+
+            GLint bonesLocBat = glGetUniformLocation(skinnedShader.Program, "bones");
+            if (bonesLocBat >= 0 && !bonesBat.empty())
+                glUniformMatrix4fv(bonesLocBat, (GLsizei)bonesBat.size(), GL_FALSE, &bonesBat[0][0][0]);
+
+            glm::mat4 modelBat(1.0f);
+            modelBat = glm::translate(modelBat, batPosition);
+            modelBat = glm::rotate(modelBat, glm::radians(-40.0f), glm::vec3(0, 1, 0));
+            modelBat = glm::scale(modelBat, glm::vec3(batScale));
+
+            glUniformMatrix4fv(glGetUniformLocation(skinnedShader.Program, "model"), 1, GL_FALSE, glm::value_ptr(modelBat));
+            muercielago.Draw(skinnedShader);
+        }
+
+
         // Draw SkyBox
         glDepthFunc(GL_LEQUAL);
         skyboxShader.Use();
@@ -1202,6 +1295,16 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
             monstruoAnimationPlayed = false;
             std::cout << "Animacion de monstruo iniciada\n";
         }
+    }
+    if (key == GLFW_KEY_P && action == GLFW_PRESS) {
+        animCuadrosActiva = !animCuadrosActiva;
+        std::cout << "Animacion de cuadros: "
+            << (animCuadrosActiva ? "ON" : "OFF") << "\n";
+    }
+    if (key == GLFW_KEY_U && action == GLFW_PRESS) {
+        batsActive = !batsActive;
+        if (batsActive)
+            batAnimationStartTime = glfwGetTime();
     }
 
 }
