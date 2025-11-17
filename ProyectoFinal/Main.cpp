@@ -200,6 +200,12 @@ glm::vec3 lerpVec3(glm::vec3 a, glm::vec3 b, float t) {
     );
 }
 
+// Variables para el monstruo
+bool monstruoAnimationActive = false;
+float monstruoAnimationStartTime = 0.0f;
+bool monstruoAnimationPlayed = false;
+glm::vec3 monstruoPosition = glm::vec3(-20.0f, -2.0f, -30.0f);
+
 // Configurar keyframes del tiro parabólico
 void setupParabolicKeyframes() {
     keyframes.clear();
@@ -603,6 +609,7 @@ int main()
     Model animacion((char*)"Models/Baile2.fbx");
     Model animacion2((char*)"Models/baile1.fbx");
     Model animacion3((char*)"Models/jugador1.fbx");
+    Model monstruo((char*)"Models/monstruo.fbx");
     Model techo((char*)"Models/Techo/techo.obj");
 
 
@@ -983,10 +990,48 @@ int main()
         //JUGADOR
         glm::mat4 modelAnim3(1.0f);
         modelAnim3 = glm::translate(modelAnim3, glm::vec3(-20.0f, -2.0f, -30.0f));
-        modelAnim3 = glm::scale(modelAnim3, glm::vec3(0.035f));
+        modelAnim3 = glm::scale(modelAnim3, glm::vec3(0.03f));
         glUniformMatrix4fv(glGetUniformLocation(skinnedShader.Program, "model"), 1, GL_FALSE, glm::value_ptr(modelAnim3));
-
         animacion3.Draw(skinnedShader);
+
+        // MONSTRUO - Animacion en loop con movimiento
+        if (monstruoAnimationActive) {
+            float timeInAnimation = t - monstruoAnimationStartTime;
+            float animDuration = 1.5f;  // Duracion corta de la animacion
+
+            // Loop infinito de la animacion
+            float loopTime = fmod(timeInAnimation, animDuration);
+            monstruo.UpdateAnimation(monstruoAnimationStartTime + loopTime);
+
+            // Movimiento hacia la entrada (eje Z positivo)
+            float velocidad = 2.0f; // Ajusta la velocidad
+            float distanciaRecorrida = timeInAnimation * velocidad;
+
+            // Actualizar posicion (camina hacia Z positivo)
+            monstruoPosition.z = -30.0f + distanciaRecorrida;
+
+            // Detener cuando llegue a la entrada (ajusta segun tu escena)
+            if (monstruoPosition.z >= -5.0f) {
+                monstruoAnimationActive = false;
+                monstruoAnimationPlayed = true;
+                std::cout << "Monstruo llego a la entrada\n";
+            }
+        }
+        else {
+            monstruo.UpdateAnimation(0.0f);
+        }
+
+        std::vector<glm::mat4> bonesMonstruo;
+        monstruo.GetBoneMatrices(bonesMonstruo, 100);
+
+        if (bonesLoc >= 0 && !bonesMonstruo.empty())
+            glUniformMatrix4fv(bonesLoc, (GLsizei)bonesMonstruo.size(), GL_FALSE, &bonesMonstruo[0][0][0]);
+
+        glm::mat4 modelMonstruo(1.0f);
+        modelMonstruo = glm::translate(modelMonstruo, monstruoPosition);
+        modelMonstruo = glm::scale(modelMonstruo, glm::vec3(0.03f)); // Ajusta si es necesario
+        glUniformMatrix4fv(glGetUniformLocation(skinnedShader.Program, "model"), 1, GL_FALSE, glm::value_ptr(modelMonstruo));
+        monstruo.Draw(skinnedShader);
 
         // Draw SkyBox
         glDepthFunc(GL_LEQUAL);
@@ -1146,6 +1191,16 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
         }
         else {
             std::cout << "Animacion de luces DESACTIVADA\n";
+        }
+    }
+
+    // Tecla Y - Iniciar animacion del monstruo
+    if (key == GLFW_KEY_Y && action == GLFW_PRESS) {
+        if (!monstruoAnimationActive) {
+            monstruoAnimationActive = true;
+            monstruoAnimationStartTime = glfwGetTime();
+            monstruoAnimationPlayed = false;
+            std::cout << "Animacion de monstruo iniciada\n";
         }
     }
 
