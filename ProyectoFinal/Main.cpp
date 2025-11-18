@@ -224,9 +224,13 @@ bool batsActive = true;  // que vuelen desde el inicio
 
 // Variables para el monstruo
 bool monstruoAnimationActive = false;
+int monstruoAnim = 0;  // Estado de la maquina
+glm::vec3 monstruoPos = convertBlenderToOpenGL(-32.251f, 3.1166f, -2.0f);  // Posicion inicial
+float monstruoRot = 0.0f;  // Rotacion del monstruo
+glm::vec3 puntoAzul = convertBlenderToOpenGL(-31.173f, 16.083f, -2.0f);  // Primer destino
+glm::vec3 puntoIntermedio = convertBlenderToOpenGL(-24.347f, 17.35f, -2.0f);  // Segundo destino
+glm::vec3 destinoFinal = convertBlenderToOpenGL(-20.483f, 39.0f, -2.0f);  // Destino final 
 float monstruoAnimationStartTime = 0.0f;
-bool monstruoAnimationPlayed = false;
-glm::vec3 monstruoPosition = glm::vec3(-20.0f, -2.0f, -30.0f);
 
 // Configurar keyframes del tiro parabólico
 void setupParabolicKeyframes() {
@@ -1084,33 +1088,104 @@ int main()
         glUniformMatrix4fv(glGetUniformLocation(skinnedShader.Program, "model"), 1, GL_FALSE, glm::value_ptr(modelAnim3));
         animacion3.Draw(skinnedShader);
 
-        // MONSTRUO - Animacion en loop con movimiento
-        if (monstruoAnimationActive) {
+        // MONSTRUO - Maquina de estados
+        if (monstruoAnim >= 1 && monstruoAnim <= 6) {  // Animar en estados 1-5
+            // Animar caminar (loop de la animacion)
             float timeInAnimation = t - monstruoAnimationStartTime;
-            float animDuration = 1.5f;  // Duracion corta de la animacion
-
-            // Loop infinito de la animacion
+            float animDuration = 1.5f;
             float loopTime = fmod(timeInAnimation, animDuration);
-            monstruo.UpdateAnimation(monstruoAnimationStartTime + loopTime);
-
-            // Movimiento hacia la entrada (eje Z positivo)
-            float velocidad = 2.0f; // Ajusta la velocidad
-            float distanciaRecorrida = timeInAnimation * velocidad;
-
-            // Actualizar posicion (camina hacia Z positivo)
-            monstruoPosition.z = -30.0f + distanciaRecorrida;
-
-            // Detener cuando llegue a la entrada 
-            if (monstruoPosition.z >= -5.0f) {
-                monstruoAnimationActive = false;
-                monstruoAnimationPlayed = true;
-                std::cout << "Monstruo llego a la entrada\n";
-            }
+            monstruo.UpdateAnimation(loopTime);
         }
         else {
-            monstruo.UpdateAnimation(0.0f);
+            monstruo.UpdateAnimation(0.0f);  // Pose inicial
         }
 
+        // E0: Idle - Esperando tecla Y
+
+        // E1: Rotar hacia punto azul (pared)
+        if (monstruoAnim == 1) {
+            glm::vec3 direccion = puntoAzul - monstruoPos;
+            float anguloObjetivo = atan2(direccion.x, direccion.z) * 180.0f / 3.14159f;
+
+            if (abs(monstruoRot - anguloObjetivo) > 1.0f) {
+                monstruoRot += (anguloObjetivo - monstruoRot) * 0.02f;
+            }
+            else {
+                monstruoRot = anguloObjetivo;
+                monstruoAnim = 2;
+            }
+        }
+
+        // E2: Caminar hacia punto azul
+        else if (monstruoAnim == 2) {
+            glm::vec3 direccion = glm::normalize(puntoAzul - monstruoPos);
+            float velocidad = 0.01f;
+            monstruoPos += direccion * velocidad;
+
+            float distancia = glm::length(puntoAzul - monstruoPos);
+            if (distancia < 1.5f) {
+                monstruoAnim = 3;
+                std::cout << "Monstruo llego a la pared\n";
+            }
+        }
+
+        // E3: Girar a la derecha hacia punto intermedio
+        else if (monstruoAnim == 3) {
+            glm::vec3 direccion = puntoIntermedio - monstruoPos;
+            float anguloObjetivo = atan2(direccion.x, direccion.z) * 180.0f / 3.14159f;
+
+            if (abs(monstruoRot - anguloObjetivo) > 1.0f) {
+                monstruoRot += (anguloObjetivo - monstruoRot) * 0.02f;
+            }
+            else {
+                monstruoRot = anguloObjetivo;
+                monstruoAnim = 4;
+            }
+        }
+
+        // E4: Caminar hacia punto intermedio
+        else if (monstruoAnim == 4) {
+            glm::vec3 direccion = glm::normalize(puntoIntermedio - monstruoPos);
+            float velocidad = 0.01f;
+            monstruoPos += direccion * velocidad;
+
+            float distancia = glm::length(puntoIntermedio - monstruoPos);
+            if (distancia < 1.5f) {
+                monstruoAnim = 5;
+                std::cout << "Monstruo llego al punto intermedio\n";
+            }
+        }
+
+        // E5: Girar hacia destino final (entrada)
+        else if (monstruoAnim == 5) {
+            glm::vec3 direccion = destinoFinal - monstruoPos;
+            float anguloObjetivo = atan2(direccion.x, direccion.z) * 180.0f / 3.14159f;
+
+            if (abs(monstruoRot - anguloObjetivo) > 1.0f) {
+                monstruoRot += (anguloObjetivo - monstruoRot) * 0.02f;
+            }
+            else {
+                monstruoRot = anguloObjetivo;
+                monstruoAnim = 6;
+            }
+        }
+
+        // E6: Caminar hacia destino final
+        else if (monstruoAnim == 6) {
+            glm::vec3 direccion = glm::normalize(destinoFinal - monstruoPos);
+            float velocidad = 0.01f;
+            monstruoPos += direccion * velocidad;
+
+            float distancia = glm::length(destinoFinal - monstruoPos);
+            if (distancia < 0.5f) {
+                monstruoAnim = 7;
+                std::cout << "Monstruo llego al destino final\n";
+            }
+        }
+
+        // E7: Llegada (estatico)
+
+        // Dibujar el monstruo
         std::vector<glm::mat4> bonesMonstruo;
         monstruo.GetBoneMatrices(bonesMonstruo, 100);
 
@@ -1118,8 +1193,9 @@ int main()
             glUniformMatrix4fv(bonesLoc, (GLsizei)bonesMonstruo.size(), GL_FALSE, &bonesMonstruo[0][0][0]);
 
         glm::mat4 modelMonstruo(1.0f);
-        modelMonstruo = glm::translate(modelMonstruo, monstruoPosition);
-        modelMonstruo = glm::scale(modelMonstruo, glm::vec3(0.03f)); 
+        modelMonstruo = glm::translate(modelMonstruo, monstruoPos);
+        modelMonstruo = glm::rotate(modelMonstruo, glm::radians(monstruoRot), glm::vec3(0.0f, 1.0f, 0.0f));
+        modelMonstruo = glm::scale(modelMonstruo, glm::vec3(0.028f));
         glUniformMatrix4fv(glGetUniformLocation(skinnedShader.Program, "model"), 1, GL_FALSE, glm::value_ptr(modelMonstruo));
         monstruo.Draw(skinnedShader);
 
@@ -1309,12 +1385,19 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
 
     // Tecla Y - Iniciar animacion del monstruo
     if (key == GLFW_KEY_Y && action == GLFW_PRESS) {
-        if (!monstruoAnimationActive) {
-            monstruoAnimationActive = true;
+        if (monstruoAnim == 0) {  // Solo si esta en idle
+            monstruoAnim = 1;  // Iniciar maquina de estados
             monstruoAnimationStartTime = glfwGetTime();
-            monstruoAnimationPlayed = false;
             std::cout << "Animacion de monstruo iniciada\n";
         }
+    }
+
+    // Tecla I - Reset solo del monstruo
+    if (key == GLFW_KEY_I && action == GLFW_PRESS) {
+        monstruoAnim = 0;
+        monstruoPos = convertBlenderToOpenGL(-32.251f, 3.1166f, -2.0f);
+        monstruoRot = 0.0f;
+        std::cout << "Monstruo reseteado\n";
     }
     if (key == GLFW_KEY_P && action == GLFW_PRESS) {
         animCuadrosActiva = !animCuadrosActiva;
