@@ -173,6 +173,9 @@ bool lightAnimationActive = false;
 float beatInterval = 3.3f; 
 float audioLevel = 0.0f;
 
+//Variable para neblina
+bool fogActive = false;
+
 enum RoomType {
     COLD_ROOM,  // Tonos fríos: azul, verde menta, blanco
     WARM_ROOM,  // Tonos cálidos: amarillo, naranja
@@ -857,6 +860,23 @@ int main()
             glUniform1f(glGetUniformLocation(lightingShader.Program, ("pointLights[" + num + "].quadratic").c_str()), 0.017f);
         }
 
+        // Activar / desactivar neblina
+            glUniform1i(glGetUniformLocation(lightingShader.Program, "useFog"), fogActive ? 1 : 0);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "fogColor"),
+            0.6f, 0.6f, 0.65f); // Color gris neblinoso
+        glUniform1f(glGetUniformLocation(lightingShader.Program, "fogDensity"),
+            0.06f);
+
+        // Tiempo para animación de neblina
+        glUniform1f(glGetUniformLocation(lightingShader.Program, "fogTime"),
+            currentFrame);
+
+        // Límites del edificio
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "buildingMin"),
+            -45.0f, -3.0f, -70.0f);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "buildingMax"),
+            5.0f, 15.0f, 5.0f);
+
         // Posicion de la camara
         glUniform3f(glGetUniformLocation(lightingShader.Program, "viewPos"), camera.GetPosition().x, camera.GetPosition().y, camera.GetPosition().z);
 
@@ -997,7 +1017,7 @@ int main()
 
         // PERSONA 1
         glm::mat4 modelAnim1(1.0f);
-        modelAnim1 = glm::translate(modelAnim1, glm::vec3(-20.0f, -2.0f, -60.0f)); // -8 en Z la empuja atras
+        modelAnim1 = glm::translate(modelAnim1, glm::vec3(-20.0f, -2.0f, -60.0f)); 
         modelAnim1 = glm::scale(modelAnim1, glm::vec3(0.035f));
         glUniformMatrix4fv(glGetUniformLocation(skinnedShader.Program, "model"), 1, GL_FALSE, glm::value_ptr(modelAnim1));
 
@@ -1384,10 +1404,16 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
         std::cout << "Animacion de cuadros: "
             << (animCuadrosActiva ? "ON" : "OFF") << "\n";
     }
+    // Tecla U - Pausa la animación de murciélagos
     if (key == GLFW_KEY_U && action == GLFW_PRESS) {
         batsActive = !batsActive;
         if (batsActive)
             batAnimationStartTime = glfwGetTime();
+    }
+    // Tecla F - Activar y desactivar neblina
+    if (key == GLFW_KEY_F && action == GLFW_PRESS) {
+        fogActive = !fogActive;
+        std::cout << "Niebla: " << (fogActive ? "ON" : "OFF") << "\n";
     }
 
 }

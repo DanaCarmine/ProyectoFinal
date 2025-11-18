@@ -39,6 +39,17 @@ uniform Material material;
 uniform bool useTexture;
 uniform vec3 objectColor;
 
+// Para la neblina
+uniform bool useFog;
+uniform vec3 fogColor;
+uniform float fogDensity;
+uniform float fogTime; 
+
+uniform vec3 buildingMin;
+uniform vec3 buildingMax;
+
+
+
 vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir);
 vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir);
 
@@ -54,6 +65,34 @@ void main()
     for (int i = 0; i < NUMBER_OF_POINT_LIGHTS; i++) {
         result += CalcPointLight(pointLights[i], norm, FragPos, viewDir);
     }
+    
+    // Aplicar neblina si está activa
+if (useFog) {
+    // Verificar si está dentro del edificio
+    bool dentroEdificio = (FragPos.x >= buildingMin.x && FragPos.x <= buildingMax.x &&
+                           FragPos.y >= buildingMin.y && FragPos.y <= buildingMax.y &&
+                           FragPos.z >= buildingMin.z && FragPos.z <= buildingMax.z);
+    
+    if (dentroEdificio) {
+        float distance = length(viewPos - FragPos);
+        
+        // Movimiento ondulante de la niebla
+        float wave1 = sin(FragPos.x * 0.8 + fogTime * 0.6) * 0.25;
+        float wave2 = cos(FragPos.z * 0.7 + fogTime * 0.5) * 0.25;
+        float wave3 = sin(FragPos.y * 0.9 + fogTime * 0.7) * 0.2;
+        
+        // Combinar ondas para movimiento más natural
+        float fogVariation = wave1 + wave2 + wave3;
+        
+        // Aplicar variación a la densidad
+        float adjustedDensity = fogDensity * (1.0 + fogVariation);
+        
+        float fogFactor = exp(-adjustedDensity * distance);
+        fogFactor = clamp(fogFactor, 0.0, 1.0);
+        
+        result = mix(fogColor, result, fogFactor);
+    }
+}
     
     // Si no usa textura, aplicar transparencia
     if (!useTexture) {
