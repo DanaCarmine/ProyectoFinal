@@ -176,6 +176,24 @@ float audioLevel = 0.0f;
 //Variable para neblina
 bool fogActive = false;
 
+// Sistema de confetti
+struct Confetti {
+    glm::vec3 position;
+    glm::vec3 velocity;
+    glm::vec3 color;
+    glm::vec3 rotation;        // Rotación en X, Y, Z
+    glm::vec3 rotationSpeed;   // Velocidad de rotación
+    float size;
+    bool active;
+    float lifetime;            // Tiempo de vida
+    float gravity;
+};
+
+std::vector<Confetti> confettiParticles;
+bool confettiActive = false;
+float confettiSpawnTimer = 0.0f;
+const int MAX_CONFETTI = 200;
+
 enum RoomType {
     COLD_ROOM,  // Tonos fríos: azul, verde menta, blanco
     WARM_ROOM,  // Tonos cálidos: amarillo, naranja
@@ -558,6 +576,214 @@ glm::vec3 getPulsingColor(float time, int i) {
         return glm::vec3(r, g, b);
     }
 }
+// Función para generar un confetti individual
+Confetti createConfetti(glm::vec3 spawnPos) {
+    Confetti c;
+
+    // Posición inicial con variación aleatoria
+    c.position = spawnPos + glm::vec3(
+        ((rand() % 200 - 100) / 50.0f),  // -2 a 2 en X
+        0.0f,
+        ((rand() % 200 - 100) / 50.0f)   // -2 a 2 en Z
+    );
+
+    // Velocidad inicial (hacia arriba y hacia los lados)
+    c.velocity = glm::vec3(
+        ((rand() % 200 - 100) / 50.0f),  // Movimiento lateral
+        2.0f + (rand() % 100) / 50.0f,   // Hacia arriba (2-4)
+        ((rand() % 200 - 100) / 50.0f)   // Movimiento lateral
+    );
+
+    // Colores vibrantes y festivos
+    int colorChoice = rand() % 6;
+    switch (colorChoice) {
+    case 0: c.color = glm::vec3(1.0f, 0.0f, 0.0f); break;  // Rojo
+    case 1: c.color = glm::vec3(0.0f, 0.0f, 1.0f); break;  // Azul
+    case 2: c.color = glm::vec3(1.0f, 1.0f, 0.0f); break;  // Amarillo
+    case 3: c.color = glm::vec3(1.0f, 0.0f, 1.0f); break;  // Magenta
+    case 4: c.color = glm::vec3(0.0f, 1.0f, 1.0f); break;  // Cyan
+    case 5: c.color = glm::vec3(1.0f, 0.5f, 0.0f); break;  // Naranja
+    }
+
+    // Rotación inicial aleatoria
+    c.rotation = glm::vec3(
+        (rand() % 360),
+        (rand() % 360),
+        (rand() % 360)
+    );
+
+    // Velocidad de rotación
+    c.rotationSpeed = glm::vec3(
+        (rand() % 400 - 200) / 10.0f,   // -20 a 20 grados/seg
+        (rand() % 400 - 200) / 10.0f,
+        (rand() % 400 - 200) / 10.0f
+    );
+
+    c.size = 0.08f + (rand() % 50) / 500.0f;  // Tamaño variable (0.08-0.18)
+    c.active = true;
+    c.lifetime = 8.0f + (rand() % 100) / 50.0f;  // 8-10 segundos
+    c.gravity = -2.5f;  // Gravedad
+
+    return c;
+}
+
+// Función para lanzar una ráfaga de confetti
+void spawnConfettiBurst(glm::vec3 position, int count) {
+    for (int i = 0; i < count && confettiParticles.size() < MAX_CONFETTI; i++) {
+        confettiParticles.push_back(createConfetti(position));
+    }
+    std::cout << "Confetti lanzado! Total activo: " << confettiParticles.size() << "\n";
+}
+
+// Actualizar física del confetti
+void updateConfetti(float deltaTime) {
+    for (auto& c : confettiParticles) {
+        if (c.active) {
+            // Actualizar física
+            c.velocity.y += c.gravity * deltaTime;  // Aplicar gravedad
+            c.position += c.velocity * deltaTime;
+
+            // Resistencia del aire (desaceleración gradual)
+            c.velocity.x *= 0.98f;
+            c.velocity.z *= 0.98f;
+
+            // Actualizar rotación
+            c.rotation.x += c.rotationSpeed.x * deltaTime;
+            c.rotation.y += c.rotationSpeed.y * deltaTime;
+            c.rotation.z += c.rotationSpeed.z * deltaTime;
+
+            // Mantener rotación en rango 0-360
+            if (c.rotation.x > 360.0f) c.rotation.x -= 360.0f;
+            if (c.rotation.y > 360.0f) c.rotation.y -= 360.0f;
+            if (c.rotation.z > 360.0f) c.rotation.z -= 360.0f;
+
+            // Reducir tiempo de vida
+            c.lifetime -= deltaTime;
+
+            // Desactivar si llegó al suelo o se acabó el tiempo
+            if (c.position.y < -2.0f || c.lifetime <= 0.0f) {
+                c.active = false;
+            }
+        }
+    }
+
+    // Limpiar confetti inactivo periódicamente
+    static float cleanupTimer = 0.0f;
+    cleanupTimer += deltaTime;
+    if (cleanupTimer > 2.0f) {
+        confettiParticles.erase(
+            std::remove_if(confettiParticles.begin(), confettiParticles.end(),
+                [](const Confetti& c) { return !c.active; }),
+            confettiParticles.end()
+        );
+        cleanupTimer = 0.0f;
+    }
+}
+
+// Dibujar confetti
+void drawConfetti(Shader& shader, glm::mat4 projection, glm::mat4 view) {
+    shader.Use();
+
+    // Habilitar transparencia y blending
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    // Deshabilitar culling para ver ambos lados
+    glDisable(GL_CULL_FACE);
+
+    // Indicar que NO use texturas
+    glUniform1i(glGetUniformLocation(shader.Program, "useTexture"), 0);
+
+    // Configurar matrices
+    glUniformMatrix4fv(glGetUniformLocation(shader.Program, "view"), 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(glGetUniformLocation(shader.Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+
+    // Propiedades del material
+    glUniform1f(glGetUniformLocation(shader.Program, "material.shininess"), 32.0f);
+
+    // Configurar luces (usar las existentes)
+    glUniform3f(glGetUniformLocation(shader.Program, "viewPos"),
+        camera.GetPosition().x, camera.GetPosition().y, camera.GetPosition().z);
+
+    // Luz direccional
+    glUniform3f(glGetUniformLocation(shader.Program, "dirLight.direction"), -0.2f, -1.0f, -0.3f);
+    glUniform3f(glGetUniformLocation(shader.Program, "dirLight.ambient"), 0.3f, 0.3f, 0.3f);
+    glUniform3f(glGetUniformLocation(shader.Program, "dirLight.diffuse"), 0.8f, 0.8f, 0.8f);
+    glUniform3f(glGetUniformLocation(shader.Program, "dirLight.specular"), 1.0f, 1.0f, 1.0f);
+
+    // Point lights
+    for (int i = 0; i < 8; i++) {
+        std::string num = std::to_string(i);
+        glUniform3fv(glGetUniformLocation(shader.Program, ("pointLights[" + num + "].position").c_str()),
+            1, glm::value_ptr(pointLightPositions[i]));
+
+        glm::vec3 lightColor = glm::vec3(1.0f);
+        glUniform3fv(glGetUniformLocation(shader.Program, ("pointLights[" + num + "].ambient").c_str()),
+            1, glm::value_ptr(lightColor * 0.2f));
+        glUniform3fv(glGetUniformLocation(shader.Program, ("pointLights[" + num + "].diffuse").c_str()),
+            1, glm::value_ptr(lightColor * 0.8f));
+        glUniform3fv(glGetUniformLocation(shader.Program, ("pointLights[" + num + "].specular").c_str()),
+            1, glm::value_ptr(lightColor));
+
+        glUniform1f(glGetUniformLocation(shader.Program, ("pointLights[" + num + "].constant").c_str()), 1.0f);
+        glUniform1f(glGetUniformLocation(shader.Program, ("pointLights[" + num + "].linear").c_str()), 0.07f);
+        glUniform1f(glGetUniformLocation(shader.Program, ("pointLights[" + num + "].quadratic").c_str()), 0.017f);
+    }
+
+    // Dibujar cada confetti
+    GLuint confettiVAO, confettiVBO;
+    glGenVertexArrays(1, &confettiVAO);
+    glGenBuffers(1, &confettiVBO);
+
+    // Geometría de un rectángulo (confetti plano)
+    float confettiVertices[] = {
+        // Posiciones          Normales
+        -0.5f, -1.0f, 0.0f,   0.0f, 0.0f, 1.0f,
+         0.5f, -1.0f, 0.0f,   0.0f, 0.0f, 1.0f,
+         0.5f,  1.0f, 0.0f,   0.0f, 0.0f, 1.0f,
+         0.5f,  1.0f, 0.0f,   0.0f, 0.0f, 1.0f,
+        -0.5f,  1.0f, 0.0f,   0.0f, 0.0f, 1.0f,
+        -0.5f, -1.0f, 0.0f,   0.0f, 0.0f, 1.0f
+    };
+
+    glBindVertexArray(confettiVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, confettiVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(confettiVertices), confettiVertices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    // Renderizar cada partícula
+    for (const auto& c : confettiParticles) {
+        if (c.active) {
+            glm::mat4 model(1.0f);
+            model = glm::translate(model, c.position);
+
+            // Aplicar rotaciones
+            model = glm::rotate(model, glm::radians(c.rotation.x), glm::vec3(1, 0, 0));
+            model = glm::rotate(model, glm::radians(c.rotation.y), glm::vec3(0, 1, 0));
+            model = glm::rotate(model, glm::radians(c.rotation.z), glm::vec3(0, 0, 1));
+
+            model = glm::scale(model, glm::vec3(c.size, c.size * 2.0f, c.size * 0.1f));
+
+            glUniformMatrix4fv(glGetUniformLocation(shader.Program, "model"), 1, GL_FALSE, glm::value_ptr(model));
+            glUniform3fv(glGetUniformLocation(shader.Program, "objectColor"), 1, glm::value_ptr(c.color));
+
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+        }
+    }
+
+    glBindVertexArray(0);
+    glDeleteVertexArrays(1, &confettiVAO);
+    glDeleteBuffers(1, &confettiVBO);
+
+    // Restaurar estados
+    glEnable(GL_CULL_FACE);
+    glDisable(GL_BLEND);
+    glUniform1i(glGetUniformLocation(shader.Program, "useTexture"), 1);
+}
 int main()
 {
     // Init GLFW
@@ -876,7 +1102,23 @@ int main()
             -45.0f, -3.0f, -70.0f);
         glUniform3f(glGetUniformLocation(lightingShader.Program, "buildingMax"),
             5.0f, 15.0f, 5.0f);
+        // Actualizar confetti
+        if (confettiActive || !confettiParticles.empty()) {
+            updateConfetti(deltaTime);
+        }
 
+        // Spawn continuo de confetti mientras las personas bailan
+        if (person1AnimationActive || person2AnimationActive) {
+            confettiSpawnTimer += deltaTime;
+
+            // Lanzar confetti cada 0.5 segundos
+            if (confettiSpawnTimer >= 0.5f && confettiActive) {
+                // Posición entre los dos bailarines
+                glm::vec3 spawnPos = glm::vec3(-16.5f, 4.0f, -60.0f);
+                spawnConfettiBurst(spawnPos, 15);  // 15 confettis por ráfaga
+                confettiSpawnTimer = 0.0f;
+            }
+        }
         // Posicion de la camara
         glUniform3f(glGetUniformLocation(lightingShader.Program, "viewPos"), camera.GetPosition().x, camera.GetPosition().y, camera.GetPosition().z);
 
@@ -1220,7 +1462,10 @@ int main()
             glUniformMatrix4fv(glGetUniformLocation(skinnedShader.Program, "model"), 1, GL_FALSE, glm::value_ptr(modelBat));
             muercielago.Draw(skinnedShader);
         }
-
+        // Dibujar conffeti
+        if (!confettiParticles.empty()) {
+            drawConfetti(lightingShader, projection, view);
+        }
 
         // Draw SkyBox
         glDepthFunc(GL_LEQUAL);
@@ -1357,7 +1602,12 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
         person1AnimationStartTime = 0.0f;
         person2AnimationStartTime = 0.0f;
 
-        std::cout << "Todo reseteado - Presiona B para jugador/pelota, T para personas\n";
+        // Agregar reset de confetti:
+        confettiParticles.clear();
+        confettiActive = false;
+        confettiSpawnTimer = 0.0f;
+
+        std::cout << "Todo reseteado - Presiona B para jugador/pelota, T para personas, C para confeti\n";
     }
     // Tecla T - Iniciar animaciones de las personas bailando
     if (key == GLFW_KEY_T && action == GLFW_PRESS) {
@@ -1414,6 +1664,27 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
     if (key == GLFW_KEY_F && action == GLFW_PRESS) {
         fogActive = !fogActive;
         std::cout << "Niebla: " << (fogActive ? "ON" : "OFF") << "\n";
+    }
+    // Tecla C - Activar/desactivar confetti
+    if (key == GLFW_KEY_C && action == GLFW_PRESS) {
+        confettiActive = !confettiActive;
+
+        if (confettiActive) {
+            // Lanzar ráfaga inicial
+            glm::vec3 spawnPos = glm::vec3(-16.5f, 4.0f, -60.0f);
+            spawnConfettiBurst(spawnPos, 50);  // Explosión inicial
+            std::cout << "CONFETTI ACTIVADO \n";
+        }
+        else {
+            std::cout << "Confetti desactivado\n";
+        }
+    }
+
+    // Tecla V - Lanzar ráfaga manual de confetti
+    if (key == GLFW_KEY_V && action == GLFW_PRESS) {
+        glm::vec3 spawnPos = glm::vec3(-16.5f, 5.0f, -60.0f);
+        spawnConfettiBurst(spawnPos, 100);  // Gran explosión
+        std::cout << " Rafaga de confetti \n";
     }
 
 }
